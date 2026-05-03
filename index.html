@@ -3,369 +3,582 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <meta name="theme-color" content="#1e3c72">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>🚪 Portón Automático - Control Principal</title>
+    <title>SmartGate · Control Portón ITIBB</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- MQTT.js desde CDN -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-    <script src="config.js"></script>
-    <script src="mqtt-client.js"></script>
-    <script src="ui.js"></script>
-    <script src="emergencia.js"></script>
 </head>
 <body>
+
+<!-- ══════════════════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════════════════ -->
+<button class="open-sidebar" onclick="abrirSidebar()" title="Menú">☰</button>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="cerrarSidebar()"></div>
+
+<aside class="sidebar" id="sidebar">
+    <button class="close-sidebar" onclick="cerrarSidebar()">✕</button>
+
+    <div class="logo">
+        <div class="logo-icon">
+            <img src="img_logo-instituto.png" alt="ITIBB" onerror="this.style.display='none'">
+        </div>
+        <div class="logo-text">
+            <h2>SMARTGATE</h2>
+            <span>ITIBB · Inf. Industrial</span>
+        </div>
+    </div>
+
+    <nav class="nav-menu">
+        <a class="nav-item active" onclick="mostrarVista('dashboard', this)">
+            <span class="nav-icon">🚪</span> Control Principal
+        </a>
+        <a class="nav-item" onclick="mostrarVista('sensores', this)">
+            <span class="nav-icon">📡</span> Sensores
+        </a>
+        <a class="nav-item" onclick="mostrarVista('historial', this)">
+            <span class="nav-icon">📋</span> Historial
+        </a>
+        <a class="nav-item" onclick="mostrarVista('configuracion', this)">
+            <span class="nav-icon">⚙️</span> Configuración
+        </a>
+    </nav>
+
+    <div class="mqtt-status">
+        <div class="status-indicator" id="mqttIndicator"></div>
+        <span class="status-text" id="mqttStatusText">Conectando...</span>
+    </div>
+
+    <div class="user-info">
+        <div class="user-avatar">👤</div>
+        <div>
+            <div class="user-name">Operador</div>
+            <div class="user-role">ITIBB · 2026</div>
+        </div>
+    </div>
+</aside>
+
+<!-- ══════════════════════════════════════════════════
+     MAIN CONTENT
+══════════════════════════════════════════════════ -->
 <div class="app-container">
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="logo">
-            <div class="logo-icon">
-                <img src="https://www.itibb.edu.bo/_astro/inf.BYqDzbDZ_2nvtHD.webp" alt="Logo ITIBB">
-            </div>
-            <div class="logo-text">
-                <h2>SmartGate</h2>
-                <span>Control del Portón</span>
-            </div>
+<main class="main-content">
+
+    <!-- ── HEADER ───────────────────────────────────── -->
+    <div class="top-header">
+        <div class="header-title">
+            <h1>🚪 Control del Portón</h1>
+            <p id="timestamp">🕐 Esperando datos...</p>
         </div>
-        <button class="close-sidebar" id="closeSidebar">✕</button>
-        <nav class="nav-menu">
-            <a href="#" class="nav-item active" data-view="dashboard">
-                <span class="nav-icon">📊</span>
-                <span>Panel Principal</span>
-            </a>
-            <a href="#" class="nav-item" data-view="history">
-                <span class="nav-icon">📜</span>
-                <span>Historial</span>
-            </a>
-            <a href="#" class="nav-item" data-view="settings">
-                <span class="nav-icon">⚙️</span>
-                <span>Configuración</span>
-            </a>
-            <a href="https://itibbinformaticaindustrial-wq.github.io/porton-monitor-secondary/" class="nav-item">
-                <span class="nav-icon">📈</span>
-                <span>Mantenimiento Predictivo</span>
-            </a>
-        </nav>
-        <div class="user-info">
-            <div class="user-avatar">👤</div>
-            <div class="user-details">
-                <span class="user-name">Administrador</span>
-                <span class="user-role">Control del Portón</span>
-            </div>
+        <div class="header-actions">
+            <button class="btn-icon" title="Estado ESP32" id="esp32Btn">📡</button>
+            <button class="btn-icon" title="Actualizar" onclick="enviarComando('ESTADO')">🔄</button>
         </div>
-        <div class="mqtt-status" id="mqttStatusSidebar">
-            <div class="status-indicator offline"></div>
-            <div class="status-text">Desconectado</div>
-        </div>
-    </aside>
+    </div>
 
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
-    <button class="open-sidebar" id="openSidebar">☰</button>
+    <!-- ════════════════════ VISTA: DASHBOARD ════════ -->
+    <div id="view-dashboard" class="view active">
 
-    <main class="main-content">
-        <!-- Vista Dashboard -->
-        <div id="dashboardView" class="view active">
-            <div class="top-header">
-                <div class="header-title">
-                    <h1>🚪 CONTROL DEL PORTÓN</h1>
-                    <p>Instituto Tecnológico Industrial Brasil Bolivia - Informática Industrial</p>
-                </div>
-                <div class="header-actions">
-                    <button onclick="location.reload()" class="btn-icon" title="Actualizar">🔄</button>
-                </div>
+        <!-- Reloj -->
+        <div class="clock" id="reloj">Cargando hora...</div>
+
+        <!-- Estado de conexión -->
+        <div class="status-grid">
+            <div class="status-item">
+                <span class="status-label">MQTT</span>
+                <span class="status-value" id="statusText">
+                    <span class="status-led offline"></span> Conectando
+                </span>
             </div>
-
-            <div class="clock" id="reloj">--/--/---- --:--:--</div>
-
-            <div class="status-grid">
-                <div class="status-item">
-                    <span class="status-label">🌐 MQTT</span>
-                    <span class="status-value" id="statusText">
-                        <span class="status-led offline"></span> Conectando...
-                    </span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">🖥️ ESP32</span>
-                    <span class="status-value" id="esp32StatusText">
-                        <span class="status-led offline"></span> Conectando...
-                    </span>
-                </div>
-            </div>
-
-            <div class="control-panel">
-                <div class="panel-header" onclick="togglePanel()">
-                    <span>⚙️ CONTROL SENSORES EXTERNOS</span>
-                    <span class="panel-arrow" id="panelArrow">▼</span>
-                </div>
-                <div class="panel-content" id="panelContent">
-                    <div class="controls-grid">
-                        <div class="control-item">
-                            <div class="control-label"><span>📷</span> Fotoeléctrica</div>
-                            <div class="toggle" id="toggleFoto" onclick="toggleSensor('foto')"></div>
-                        </div>
-                        <div class="control-item">
-                            <div class="control-label"><span>🤖</span> Modo Automático</div>
-                            <div class="toggle" id="toggleAuto" onclick="toggleModoAuto()"></div>
-                        </div>
-                        <div class="control-item">
-                            <div class="control-label"><span>🎮</span> Botón Físico</div>
-                            <div class="toggle" id="toggleBoton" onclick="toggleBotonFisico()"></div>
-                        </div>
-                        <div class="control-item">
-                            <div class="control-label"><span>🚪</span> Sensores PIR</div>
-                            <div class="toggle" id="togglePIR" onclick="togglePIR()"></div>
-                        </div>
-                        <div class="control-item">
-                            <div class="control-label"><span>⏰</span> Modo Horario</div>
-                            <div class="toggle" id="toggleHorario" onclick="toggleHorario()"></div>
-                        </div>
-                        <div class="control-item">
-                            <div class="control-label"><span>🔑</span> Permiso Especial</div>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <input type="number" id="permisoMinutos" value="60" min="5" max="120" step="5">
-                                <button class="btn-permiso" id="btnPermiso" onclick="activarPermisoConTiempo()">ACTIVAR</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="permisoEstado" class="permiso-estado"></div>
-                </div>
-            </div>
-
-            <div class="gate-area">
-                <div class="gate-track"></div>
-                <div class="gate-door" id="puerta">🚪</div>
-            </div>
-            <div class="gate-status" id="estadoPorton">Cargando...</div>
-
-            <div class="sensors-row">
-                <div class="sensor-card" id="sensorAbiertoBox">
-                    <div class="sensor-icon">🔓</div>
-                    <div class="sensor-label">FINAL ABIERTO</div>
-                    <div class="sensor-value" id="sensorAbiertoVal">⚪</div>
-                </div>
-                <div class="sensor-card" id="sensorCerradoBox">
-                    <div class="sensor-icon">🔒</div>
-                    <div class="sensor-label">FINAL CERRADO</div>
-                    <div class="sensor-value" id="sensorCerradoVal">⚪</div>
-                </div>
-            </div>
-
-            <div class="button-group">
-                <button class="btn btn-primary" id="btnAbrir">🔓 ABRIR</button>
-                <button class="btn btn-secondary" id="btnCerrar">🔒 CERRAR</button>
-            </div>
-
-            <div class="emergencia-remota-panel">
-                <div style="font-weight:bold; margin-bottom:10px">🌐 EMERGENCIA REMOTA</div>
-                <div class="emergencia-info" id="emergenciaRemotaEstado">🟢 Emergencia inactiva</div>
-                <button class="btn-emergencia-remota" onclick="activarEmergenciaRemotaUI()">🛑 ACTIVAR EMERGENCIA REMOTA</button>
-                <button class="btn-emergencia-remota" onclick="desactivarEmergenciaRemotaUI()">🔓 DESACTIVAR EMERGENCIA REMOTA</button>
-            </div>
-
-            <div class="emergencia-remota-panel" style="margin-top: 15px;">
-                <div style="font-weight:bold; margin-bottom:10px">🔧 ADMINISTRADOR</div>
-                <div class="emergencia-info" id="adminInfo">🔒 Panel oculto - Ingrese contraseña</div>
-                <button class="btn-emergencia-remota" onclick="mostrarAdmin()" style="background:#555;">🔐 ACCESO ADMIN</button>
-                <div id="adminPanel" style="display:none; margin-top:10px;">
-                    <button class="btn-emergencia-remota" onclick="abrirTemporalAdmin()" style="background:#e67e22;">🔓 ABRIR TEMPORAL (1 minuto)</button>
-                </div>
-            </div>
-
-            <div class="badges-row">
-                <span class="badge">✅ Pulso 300ms</span>
-                <span class="badge">🔒 IP Fija</span>
-                <span class="badge badge-chapa" id="chapaBadge">🔐 Chapa: OFF</span>
-                <span class="badge badge-boton" id="botonBadge">🎮 Botón: ON</span>
-                <span class="badge badge-emergencia" id="emergenciaBadge">🛑 Emergencia: OFF</span>
-                <span class="badge badge-pir" id="pirBadge">🚪 PIR: ON</span>
-                <span class="badge badge-horario" id="horarioBadge">⏰ Horario: ON</span>
-                <span class="badge badge-mqtt" id="mqttBadge">🌍 MQTT: Conectando...</span>
-            </div>
-
-            <div class="footer">
-                <div id="timestamp"></div>
-                <div class="local-link">🏠 Acceso local: <strong>http://192.168.1.200</strong></div>
+            <div class="status-item">
+                <span class="status-label">ESP32</span>
+                <span class="status-value" id="esp32StatusText">
+                    <span class="status-led offline"></span> Sin respuesta
+                </span>
             </div>
         </div>
 
-        <!-- Vista Historial -->
-        <div id="historyView" class="view">
-            <div class="settings-panel">
-                <h2>📜 Historial de Eventos</h2>
-                
-                <div class="history-filters">
-                    <input type="date" id="dateFrom" class="filter-input">
-                    <input type="date" id="dateTo" class="filter-input">
-                    <select id="eventTypeFilter" class="filter-input">
-                        <option value="all">Todos los eventos</option>
-                        <option value="PORTÓN_ABIERTO">Aperturas</option>
-                        <option value="PORTÓN_CERRADO">Cierres</option>
-                        <option value="EMERGENCIA">Emergencias</option>
-                        <option value="PERMISO_ESPECIAL">Permisos especiales</option>
-                        <option value="TOGGLE_FOTO">Fotoeléctrica</option>
-                        <option value="TOGGLE_AUTO">Modo Automático</option>
-                        <option value="TOGGLE_BOTON">Botón Físico</option>
-                        <option value="TOGGLE_PIR">Sensores PIR</option>
-                        <option value="TOGGLE_HORARIO">Modo Horario</option>
-                        <option value="ADMIN_ABRIR">Administrador</option>
-                    </select>
-                    <button onclick="filterHistory()" class="btn-primary">Filtrar</button>
-                    <button onclick="resetFilters()" class="btn-secondary">Limpiar</button>
-                </div>
-                
-                <div class="history-stats">
-                    <div class="stat-mini"><span>📊 Total eventos</span><strong id="totalEvents">0</strong></div>
-                    <div class="stat-mini"><span>📅 Este mes</span><strong id="monthEvents">0</strong></div>
-                    <div class="stat-mini"><span>📈 Promedio diario</span><strong id="avgDaily">0</strong></div>
-                </div>
-                
-                <div class="history-table-container">
-                    <table class="history-table">
-                        <thead>
-                            <tr>
-                                <th>📅 Fecha/Hora</th>
-                                <th>🏷️ Evento</th>
-                                <th>📝 Detalle</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historyBody">
-                            <tr><td colspan="3">Cargando historial...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                
-                <button onclick="clearEventsWithPassword()" class="btn-danger" style="margin-top:20px">🗑️ Eliminar todo el historial (requiere contraseña)</button>
+        <!-- Contador ciclos -->
+        <div class="status-item" style="margin-bottom:12px;justify-content:center;gap:12px;">
+            <span class="status-label">📊 Ciclos hoy</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--accent)"
+                  id="contadorValor">—</span>
+        </div>
+
+        <!-- Botones Abrir / Cerrar -->
+        <div class="button-group">
+            <button class="btn btn-primary btn-bloqueado" id="btnAbrir">
+                🔓 ABRIR
+            </button>
+            <button class="btn btn-secondary btn-bloqueado" id="btnCerrar">
+                🔒 CERRAR
+            </button>
+        </div>
+
+        <!-- Animación del portón -->
+        <div class="gate-area">
+            <div class="gate-track"></div>
+            <div class="gate-door" id="puerta" style="left:12px">🚪</div>
+        </div>
+        <div class="gate-status cerrado" id="estadoPorton">🔒 PORTÓN CERRADO</div>
+
+        <!-- Sensores finales de carrera -->
+        <div class="sensors-row">
+            <div class="sensor-card" id="sensorAbiertoBox">
+                <div class="sensor-icon">🔲</div>
+                <div class="sensor-label">F. Carrera ABIERTO</div>
+                <div class="sensor-value" id="sensorAbiertoVal">—</div>
+            </div>
+            <div class="sensor-card" id="sensorCerradoBox">
+                <div class="sensor-icon">🔳</div>
+                <div class="sensor-label">F. Carrera CERRADO</div>
+                <div class="sensor-value" id="sensorCerradoVal">—</div>
             </div>
         </div>
 
-        <!-- Vista Configuración -->
-        <div id="settingsView" class="view">
-            <div class="settings-panel">
-                <h2>⚙️ Configuración</h2>
-                
-                <div class="settings-group">
-                    <h3>Apariencia</h3>
-                    <div class="setting-item">
-                        <label>🌙 Modo Oscuro / Claro</label>
-                        <label class="switch">
-                            <input type="checkbox" id="darkModeToggle">
-                            <span class="slider"></span>
+        <!-- Panel de configuración colapsable -->
+        <div class="control-panel">
+            <div class="panel-header" onclick="togglePanel()">
+                <span>⚙️ CONFIGURACIÓN DE SENSORES</span>
+                <span class="panel-arrow" id="panelArrow">▼</span>
+            </div>
+            <div class="panel-content" id="panelContent">
+                <div class="controls-grid">
+                    <div class="control-item">
+                        <label class="control-label">
+                            <span>📷</span> Fotoeléctrica
                         </label>
+                        <div class="toggle" id="toggleFoto" onclick="toggleSensor()" title="Sensor fotoeléctrico"></div>
                     </div>
-                </div>
-                
-                <div class="settings-group">
-                    <h3>Acerca de</h3>
-                    <p>Versión: 2.0.0</p>
-                    <p>Sistema de control de portón automático</p>
-                    <p>Instituto Tecnológico Industrial Brasil Bolivia</p>
-                    <p>Informática Industrial</p>
+                    <div class="control-item">
+                        <label class="control-label">
+                            <span>🤖</span> Modo Automático
+                        </label>
+                        <div class="toggle" id="toggleAuto" onclick="toggleModoAuto()" title="Modo automático"></div>
+                    </div>
+                    <div class="control-item">
+                        <label class="control-label">
+                            <span>🎮</span> Botón Físico
+                        </label>
+                        <div class="toggle" id="toggleBoton" onclick="toggleBotonFisico()" title="Botón físico de apertura"></div>
+                    </div>
+                    <div class="control-item">
+                        <label class="control-label">
+                            <span>🚶</span> Sensores PIR
+                        </label>
+                        <div class="toggle" id="togglePIR" onclick="togglePIR()" title="Detección de movimiento PIR"></div>
+                    </div>
+                    <div class="control-item" style="grid-column:1/-1">
+                        <label class="control-label">
+                            <span>⏰</span> Modo Horario (L–V 7:30–14:00)
+                        </label>
+                        <div class="toggle" id="toggleHorario" onclick="toggleHorario()" title="Control por horario"></div>
+                    </div>
+                    <!-- Permiso especial -->
+                    <div class="control-item" style="grid-column:1/-1;flex-direction:column;align-items:flex-start;gap:10px;">
+                        <label class="control-label">
+                            <span>🔑</span> Permiso especial (5–120 min)
+                        </label>
+                        <div style="display:flex;gap:8px;align-items:center;width:100%">
+                            <input type="number" id="permisoMinutos" value="60" min="5" max="120">
+                            <button class="btn-permiso" id="btnPermiso" onclick="activarPermisoConTiempo()">
+                                Activar
+                            </button>
+                        </div>
+                        <div class="permiso-estado" id="permisoEstado"></div>
+                    </div>
                 </div>
             </div>
         </div>
-    </main>
-</div>
 
-<div id="emergenciaOverlay" style="display:none" class="emergencia-overlay">
+        <!-- Emergencia remota -->
+        <div class="emergencia-remota-panel">
+            <div class="emergencia-panel-titulo">🌐 Emergencia Remota</div>
+            <div class="emergencia-info">
+                Activa la parada de emergencia de forma remota. Requiere contraseña para desactivar.
+            </div>
+            <button class="btn-emergencia-remota" onclick="activarEmergenciaRemotaUI()">
+                🛑 ACTIVAR EMERGENCIA REMOTA
+            </button>
+        </div>
+
+        <!-- Administrador -->
+        <div class="admin-panel">
+            <div class="admin-panel-titulo">🔧 Administrador</div>
+            <button class="btn-admin" onclick="mostrarAdmin()">
+                🔐 Acceso Admin
+            </button>
+            <div id="adminPanel" style="display:none;margin-top:10px">
+                <button class="btn-admin btn-admin-accion" onclick="abrirTemporalAdmin()">
+                    🔓 Abrir temporal (1 minuto)
+                </button>
+            </div>
+        </div>
+
+        <!-- Badges de estado -->
+        <div class="badges-row">
+            <span class="badge" id="chapaBadge">🔐 Chapa: —</span>
+            <span class="badge badge-mqtt" id="mqttBadge">🌍 MQTT: —</span>
+            <span class="badge badge-emergencia" id="emergenciaBadge">✅ Sin emergencia</span>
+            <span class="badge" id="botonBadge">🎮 Botón: —</span>
+            <span class="badge" id="pirBadge">🚶 PIR: —</span>
+            <span class="badge badge-horario" id="horarioBadge">⏰ Horario: —</span>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div>Instituto Tecnológico Industrial Brasil Bolivia · Inf. Industrial 2026</div>
+            <div class="local-link">Red local: <strong>http://192.168.1.200</strong></div>
+        </div>
+
+    </div><!-- /view-dashboard -->
+
+    <!-- ════════════════════ VISTA: SENSORES ═════════ -->
+    <div id="view-sensores" class="view">
+        <div class="top-header">
+            <div class="header-title">
+                <h1>📡 Estado de Sensores</h1>
+                <p>Monitoreo en tiempo real</p>
+            </div>
+        </div>
+
+        <div class="sensors-row" style="flex-wrap:wrap;gap:12px">
+            <div class="sensor-card" id="sensorAbiertoBox2">
+                <div class="sensor-icon">🟩</div>
+                <div class="sensor-label">Final Carrera ABIERTO</div>
+                <div class="sensor-value" id="sensorAbiertoVal2">—</div>
+            </div>
+            <div class="sensor-card" id="sensorCerradoBox2">
+                <div class="sensor-icon">🟥</div>
+                <div class="sensor-label">Final Carrera CERRADO</div>
+                <div class="sensor-value" id="sensorCerradoVal2">—</div>
+            </div>
+            <div class="sensor-card">
+                <div class="sensor-icon">📷</div>
+                <div class="sensor-label">Fotoeléctrico</div>
+                <div class="sensor-value" id="estadoFoto">—</div>
+            </div>
+            <div class="sensor-card">
+                <div class="sensor-icon">🚶</div>
+                <div class="sensor-label">PIR Habilitado</div>
+                <div class="sensor-value" id="estadoPIR">—</div>
+            </div>
+            <div class="sensor-card">
+                <div class="sensor-icon">🔐</div>
+                <div class="sensor-label">Chapa Elec.</div>
+                <div class="sensor-value" id="estadoChapa">—</div>
+            </div>
+            <div class="sensor-card">
+                <div class="sensor-icon">⚡</div>
+                <div class="sensor-label">Motor</div>
+                <div class="sensor-value" id="estadoMotor">—</div>
+            </div>
+        </div>
+
+        <div class="status-item" style="margin-top:16px">
+            <span class="status-label">Estado general</span>
+            <span class="status-value" id="estadoGeneralSensores">Esperando datos...</span>
+        </div>
+    </div><!-- /view-sensores -->
+
+    <!-- ════════════════════ VISTA: HISTORIAL ════════ -->
+    <div id="view-historial" class="view">
+        <div class="top-header">
+            <div class="header-title">
+                <h1>📋 Historial de Eventos</h1>
+                <p>Registro local de comandos y cambios de estado</p>
+            </div>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="history-stats">
+            <div class="stat-mini">
+                <strong id="totalEvents">0</strong>
+                <span>Total eventos</span>
+            </div>
+            <div class="stat-mini">
+                <strong id="monthEvents">0</strong>
+                <span>Este mes</span>
+            </div>
+            <div class="stat-mini">
+                <strong id="avgDaily">0</strong>
+                <span>Promedio/día</span>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="history-filters">
+            <select class="filter-input" id="eventTypeFilter">
+                <option value="all">Todos los eventos</option>
+                <option value="ABRIR">Abrir</option>
+                <option value="CERRAR">Cerrar</option>
+                <option value="TOGGLE_FOTO">Fotoeléctrica</option>
+                <option value="TOGGLE_PIR">PIR</option>
+                <option value="TOGGLE_HORARIO">Horario</option>
+                <option value="ACTIVAR_EMERGENCIA_REMOTA">Emergencia</option>
+                <option value="ADMIN_ABRIR">Admin</option>
+            </select>
+            <input type="date" class="filter-input" id="dateFrom" title="Desde">
+            <input type="date" class="filter-input" id="dateTo"   title="Hasta">
+            <button class="btn btn-primary small" onclick="filterHistory()">Filtrar</button>
+            <button class="btn btn-secondary small" onclick="resetFilters()">Limpiar</button>
+        </div>
+
+        <div class="history-table-container">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Fecha y Hora</th>
+                        <th>Evento</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody">
+                    <tr><td colspan="3" style="text-align:center;opacity:0.5">Sin eventos aún</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div style="margin-top:16px">
+            <button class="btn-danger" onclick="clearEventsWithPassword()">🗑️ Limpiar historial</button>
+        </div>
+    </div><!-- /view-historial -->
+
+    <!-- ════════════════════ VISTA: CONFIGURACIÓN ════ -->
+    <div id="view-configuracion" class="view">
+        <div class="top-header">
+            <div class="header-title">
+                <h1>⚙️ Configuración</h1>
+                <p>Parámetros del sistema SmartGate</p>
+            </div>
+        </div>
+
+        <div class="settings-panel">
+            <div class="settings-group">
+                <h3>🔗 Conexión MQTT</h3>
+                <div class="setting-item">
+                    <label>Broker</label>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)">
+                        HiveMQ Cloud
+                    </span>
+                </div>
+                <div class="setting-item">
+                    <label>Estado</label>
+                    <span id="mqttEstadoConf">—</span>
+                </div>
+                <div class="setting-item">
+                    <label>ESP32</label>
+                    <span id="esp32EstadoConf">—</span>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <h3>⏰ Horario de acceso</h3>
+                <div class="setting-item">
+                    <label>Días activos</label>
+                    <span style="color:var(--text-secondary)">Lunes – Viernes</span>
+                </div>
+                <div class="setting-item">
+                    <label>Horario</label>
+                    <span style="font-family:'JetBrains Mono',monospace;color:var(--accent)">07:30 – 14:00</span>
+                </div>
+                <div class="setting-item">
+                    <label>Estado actual</label>
+                    <span id="horarioEstadoConf">—</span>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <h3>🏠 Control local (Red Wi-Fi)</h3>
+                <p>Cuando estés conectado a la red del instituto puedes acceder directamente al ESP32:</p>
+                <div class="setting-item">
+                    <label>IP local</label>
+                    <a href="http://192.168.1.200" target="_blank"
+                       style="font-family:'JetBrains Mono',monospace;color:var(--accent);text-decoration:none">
+                        192.168.1.200
+                    </a>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <h3>ℹ️ Información del sistema</h3>
+                <div class="setting-item">
+                    <label>Versión firmware</label>
+                    <span style="font-family:'JetBrains Mono',monospace;color:var(--text-muted)">v14.0</span>
+                </div>
+                <div class="setting-item">
+                    <label>Proyecto</label>
+                    <span style="color:var(--text-muted)">Portón Automático ITIBB</span>
+                </div>
+                <div class="setting-item">
+                    <label>Departamento</label>
+                    <span style="color:var(--text-muted)">Informática Industrial</span>
+                </div>
+            </div>
+        </div>
+    </div><!-- /view-configuracion -->
+
+</main>
+</div><!-- /app-container -->
+
+<!-- ══════════════════════════════════════════════════
+     OVERLAY DE EMERGENCIA
+══════════════════════════════════════════════════ -->
+<div class="emergencia-overlay" id="emergenciaOverlay" style="display:none">
     <div class="emergencia-card">
         <div class="emergencia-icon">🛑</div>
-        <h1>EMERGENCIA</h1>
-        <div class="emergencia-texto">PARADA DE EMERGENCIA ACTIVADA</div>
+        <h1>PARADA DE EMERGENCIA</h1>
+        <div class="emergencia-tipo" id="emergenciaTipo">ACTIVADA</div>
+
         <div class="emergencia-info">
-            <p>🔒 Chapa eléctrica activada</p>
-            <p>⛔ Motor desactivado</p>
-            <p>🔌 Sensores externos desactivados</p>
+            <p>📌 El motor está detenido.</p>
+            <p>📌 El portón está bloqueado.</p>
+            <p>📌 Para emergencia física: desactive el botón físico del tablero.</p>
         </div>
-        <div id="emergenciaContrasena" style="display:none; margin-top:15px">
-            <input type="password" id="contrasenaEmergencia" class="input-contrasena" placeholder="Contraseña (123)">
-            <button class="btn-permiso" onclick="desactivarEmergenciaRemotaUI()">DESACTIVAR</button>
-            <div id="errorContrasena" style="color:#ffcccc; font-size:12px; margin-top:5px"></div>
+
+        <!-- Botón recargar (emergencia física) -->
+        <div id="btnRecargarEmergencia">
+            <p style="font-size:13px;opacity:0.8;margin-bottom:12px">
+                La página recargará automáticamente cuando se desactive.
+            </p>
+            <button class="btn-emergencia" onclick="location.reload()">🔄 Recargar ahora</button>
         </div>
-        <button class="btn-emergencia" id="btnRecargarEmergencia" onclick="location.reload()" style="display:none">🔄 Actualizar</button>
+
+        <!-- Formulario contraseña (emergencia remota) -->
+        <div id="emergenciaContrasena" style="display:none">
+            <p style="font-size:13px;opacity:0.8;margin-bottom:16px">
+                Ingrese la contraseña para desactivar la emergencia remota:
+            </p>
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+                <input type="password" class="input-contrasena"
+                       id="contrasenaEmergencia" placeholder="Contraseña">
+                <button class="btn-emergencia" onclick="desactivarEmergenciaRemotaUI()">
+                    ✅ Desactivar
+                </button>
+            </div>
+            <div id="errorContrasena"
+                 style="margin-top:10px;font-size:13px;color:#fca5a5;min-height:20px"></div>
+        </div>
     </div>
 </div>
 
-<div id="mensajeFlotante" class="mensaje-flotante"></div>
-<audio id="notificationSound" preload="auto">
-    <source src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3" type="audio/mpeg">
-</audio>
+<!-- ══════════════════════════════════════════════════
+     TOAST
+══════════════════════════════════════════════════ -->
+<div class="mensaje-flotante" id="mensajeFlotante"></div>
+
+<!-- ══════════════════════════════════════════════════
+     SCRIPTS — orden correcto:
+     1. config.js   (CONFIG global)
+     2. emergencia.js (mostrarEmergencia, desactivarEmergenciaRemotaUI)
+     3. ui.js        (updatePortonUI, updateConfiguracion, etc.)
+     4. mqtt-client.js (conectarMQTT, enviarComando, mostrarMensaje)
+══════════════════════════════════════════════════ -->
+<script src="config.js"></script>
+<script src="emergencia.js"></script>
+<script src="ui.js"></script>
+<script src="mqtt-client.js"></script>
 
 <script>
-    window.onload = function() {
-        iniciarReloj();
-        conectarMQTT();
-        configurarBotones();
-        iniciarHeartbeatCheck();
-        
-        // Modo oscuro
-        const darkModeToggle = document.getElementById('darkModeToggle');
-        if (darkModeToggle) {
-            const darkMode = localStorage.getItem('darkMode') === 'true';
-            darkModeToggle.checked = darkMode;
-            if (darkMode) document.body.classList.add('dark-mode');
-            
-            darkModeToggle.addEventListener('change', function() {
-                if (this.checked) {
-                    document.body.classList.add('dark-mode');
-                    localStorage.setItem('darkMode', 'true');
-                } else {
-                    document.body.classList.remove('dark-mode');
-                    localStorage.setItem('darkMode', 'false');
-                }
-            });
-        }
-        
-        // Cargar historial al inicio
-        if (typeof actualizarTablaHistorial === "function") {
-            actualizarTablaHistorial();
-        }
-    };
+// ── Navegación entre vistas ──────────────────────
+function mostrarVista(nombre, navEl) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const vista = document.getElementById('view-' + nombre);
+    if (vista) vista.classList.add('active');
+    if (navEl) navEl.classList.add('active');
 
-    // Sidebar control
-    const sidebar = document.getElementById('sidebar');
-    const openSidebar = document.getElementById('openSidebar');
-    const closeSidebar = document.getElementById('closeSidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    
-    function openSidebarFunc() {
-        sidebar.classList.add('open');
-        overlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-    
-    function closeSidebarFunc() {
-        sidebar.classList.remove('open');
-        overlay.classList.remove('active');
-        document.body.style.overflow = '';
-    }
-    
-    if (openSidebar) openSidebar.onclick = openSidebarFunc;
-    if (closeSidebar) closeSidebar.onclick = closeSidebarFunc;
-    if (overlay) overlay.onclick = closeSidebarFunc;
-    
-    window.addEventListener('resize', () => {
-        if (window.innerWidth > 1024) {
-            closeSidebarFunc();
-        }
-    });
+    // Actualizar historial al abrir esa vista
+    if (nombre === 'historial') actualizarTablaHistorial();
+    if (nombre === 'configuracion') actualizarConf();
 
-    // Navegación entre vistas
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            const view = item.dataset.view;
-            if (!view) return;
-            
-            e.preventDefault();
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.getElementById(view + 'View').classList.add('active');
-            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-            item.classList.add('active');
-            if (window.innerWidth <= 1024) {
-                closeSidebarFunc();
-            }
-        });
-    });
+    cerrarSidebar();
+}
+
+// ── Sidebar (móvil) ──────────────────────────────
+function abrirSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sidebarOverlay').classList.add('active');
+}
+function cerrarSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('active');
+}
+
+// ── updateSensores extendido (vista sensores) ────
+const _updateSensoresOriginal = typeof updateSensores === 'function' ? updateSensores : null;
+function updateSensores(data) {
+    // Vista dashboard
+    const cardA = document.getElementById('sensorAbiertoBox');
+    const cardC = document.getElementById('sensorCerradoBox');
+    const valA  = document.getElementById('sensorAbiertoVal');
+    const valC  = document.getElementById('sensorCerradoVal');
+    if (valA) valA.textContent = data.abierto ? '🟢 Activo' : '⚪ Inactivo';
+    if (valC) valC.textContent = data.cerrado ? '🟢 Activo' : '⚪ Inactivo';
+    if (cardA) cardA.classList.toggle('activo', !!data.abierto);
+    if (cardC) cardC.classList.toggle('activo', !!data.cerrado);
+
+    // Vista sensores
+    const cardA2 = document.getElementById('sensorAbiertoBox2');
+    const cardC2 = document.getElementById('sensorCerradoBox2');
+    const valA2  = document.getElementById('sensorAbiertoVal2');
+    const valC2  = document.getElementById('sensorCerradoVal2');
+    if (valA2) valA2.textContent = data.abierto ? '🟢 Activo' : '⚪ Inactivo';
+    if (valC2) valC2.textContent = data.cerrado ? '🟢 Activo' : '⚪ Inactivo';
+    if (cardA2) cardA2.classList.toggle('activo', !!data.abierto);
+    if (cardC2) cardC2.classList.toggle('activo', !!data.cerrado);
+}
+
+// Actualizar vista sensores con datos del estado
+function updateSensoresDesdeEstado(data) {
+    const foto  = document.getElementById('estadoFoto');
+    const pir   = document.getElementById('estadoPIR');
+    const chapa = document.getElementById('estadoChapa');
+    const motor = document.getElementById('estadoMotor');
+    const gral  = document.getElementById('estadoGeneralSensores');
+
+    if (foto)  foto.textContent  = data.fotoHabilitado ? '✅ Habilitado' : '❌ Deshabilitado';
+    if (pir)   pir.textContent   = data.pirHabilitado  ? '✅ Habilitado' : '❌ Deshabilitado';
+    if (chapa) chapa.textContent = data.chapaActiva     ? '🔐 Activada'  : '⚪ Inactiva';
+    if (motor) motor.textContent = data.motorActivo     ? '⚡ Activo'    : '⚫ Inactivo';
+    if (gral)  gral.textContent  = data.estado || '—';
+}
+
+// Actualizar vista configuración
+function actualizarConf() {
+    const mqttEl    = document.getElementById('mqttEstadoConf');
+    const esp32El   = document.getElementById('esp32EstadoConf');
+    const horarioEl = document.getElementById('horarioEstadoConf');
+    if (mqttEl)    mqttEl.textContent    = mqttConectado ? '✅ Conectado' : '❌ Desconectado';
+    if (esp32El)   esp32El.textContent   = (ultimoHeartbeat && Date.now() - ultimoHeartbeat < 35000) ? '✅ Online' : '⚠️ Sin respuesta';
+    if (horarioEl) horarioEl.textContent = verificarAccesoActivo() ? '✅ En horario activo' : '⏰ Fuera de horario';
+}
+
+// ── Sobrescribir updateConfiguracion para también
+//    actualizar la vista de sensores ────────────────
+const _updateConfOrig = updateConfiguracion;
+function updateConfiguracion(data) {
+    _updateConfOrig(data);
+    updateSensoresDesdeEstado(data);
+}
+
+// ── Inicialización ───────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+    iniciarReloj();
+    configurarBotones();
+    iniciarHeartbeatCheck();
+    conectarMQTT();
+    actualizarEstadoHorario();
+    setInterval(actualizarEstadoHorario, 60000);
+
+    // Tooltip ESP32
+    const btn = document.getElementById('esp32Btn');
+    if (btn) btn.onclick = () => mostrarMensaje(
+        (ultimoHeartbeat && Date.now() - ultimoHeartbeat < 35000)
+            ? '📡 ESP32 online'
+            : '⚠️ ESP32 sin respuesta — verifica conexión'
+    );
+});
 </script>
 </body>
 </html>
