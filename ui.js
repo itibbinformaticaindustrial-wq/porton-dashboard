@@ -1,192 +1,269 @@
-// ==================== VARIABLES GLOBALES ====================
-let panelAbierto = true;
+// ============================================================
+// ui.js - Lógica de interfaz de usuario
+// ITIBB - Informática Industrial
+// ============================================================
+// IMPORTANTE: mostrarMensaje, mostrarEmergencia y
+// desactivarEmergenciaRemotaUI están definidas en otros archivos.
+// Este archivo NO las redefine.
+// ============================================================
+
 let permisoEspecialLocal = false;
-let adminAutorizado = false;
-let sincronizado = false;
+let adminAutorizado      = false;
+let sincronizado         = false;
+let panelAbierto         = true;
 
-// ==================== FUNCIÓN PRINCIPAL DE ACTUALIZACIÓN ====================
-function procesarMensajeMQTT(topic, mensaje) {
-    console.log("📨 Topic:", topic);
-    console.log("📦 Mensaje:", mensaje);
-    
-    if (topic === "porton/estado") {
-        // Actualizar estado del portón
-        const estadoDiv = document.getElementById('estadoPorton');
-        const puerta = document.getElementById('puerta');
-        if (estadoDiv && puerta && mensaje.estado) {
-            if (mensaje.estado === "ABIERTO") {
-                estadoDiv.innerHTML = '✅ PORTÓN ABIERTO';
-                estadoDiv.className = 'gate-status abierto';
-                puerta.style.left = 'calc(100% - 90px)';
-            } else if (mensaje.estado === "CERRADO") {
-                estadoDiv.innerHTML = '🔒 PORTÓN CERRADO';
-                estadoDiv.className = 'gate-status cerrado';
-                puerta.style.left = '12px';
-            } else {
-                estadoDiv.innerHTML = '⚠️ PORTÓN ENTREABIERTO';
-                estadoDiv.className = 'gate-status intermedio';
-                puerta.style.left = 'calc(50% - 45px)';
-            }
-        }
-        
-        // Actualizar toggles
-        const toggleFoto = document.getElementById('toggleFoto');
-        if (toggleFoto) {
-            if (mensaje.fotoHabilitado) toggleFoto.classList.add('active');
-            else toggleFoto.classList.remove('active');
-        }
-        
-        const toggleAuto = document.getElementById('toggleAuto');
-        if (toggleAuto) {
-            if (mensaje.modoAuto) toggleAuto.classList.add('active');
-            else toggleAuto.classList.remove('active');
-        }
-        
-        const toggleBoton = document.getElementById('toggleBoton');
-        if (toggleBoton) {
-            if (mensaje.botonFisicoHabilitado) toggleBoton.classList.add('active');
-            else toggleBoton.classList.remove('active');
-        }
-        
-        const togglePIR = document.getElementById('togglePIR');
-        if (togglePIR) {
-            if (mensaje.pirHabilitado) togglePIR.classList.add('active');
-            else togglePIR.classList.remove('active');
-        }
-        
-        const toggleHorario = document.getElementById('toggleHorario');
-        if (toggleHorario) {
-            if (mensaje.modoHorario) toggleHorario.classList.add('active');
-            else toggleHorario.classList.remove('active');
-        }
-        
-        // Badges
-        const chapaBadge = document.getElementById('chapaBadge');
-        if (chapaBadge) {
-            chapaBadge.innerHTML = mensaje.chapaActiva ? '🔐 Chapa: ON' : '🔐 Chapa: OFF';
-        }
-        
-        const mqttBadge = document.getElementById('mqttBadge');
-        if (mqttBadge) {
-            mqttBadge.innerHTML = '🌍 MQTT: Conectado';
-        }
-        
-        const emergenciaBadge = document.getElementById('emergenciaBadge');
-        if (emergenciaBadge) {
-            if (mensaje.emergenciaActiva) {
-                emergenciaBadge.innerHTML = '🛑 EMERGENCIA ACTIVA';
-                emergenciaBadge.style.background = '#e74c3c';
-            } else {
-                emergenciaBadge.innerHTML = '🛑 Emergencia: OFF';
-                emergenciaBadge.style.background = '#e67e22';
-            }
-        }
-        
-        // Permiso especial
-        if (mensaje.permisoEspecial) {
-            permisoEspecialLocal = true;
-            const permisoEstado = document.getElementById('permisoEstado');
-            if (permisoEstado) permisoEstado.innerHTML = '🔑 Permiso especial activo';
-        } else {
-            permisoEspecialLocal = false;
-            const permisoEstado = document.getElementById('permisoEstado');
-            if (permisoEstado) permisoEstado.innerHTML = '';
-        }
-        
-        if (!sincronizado) {
-            sincronizado = true;
-            console.log("✅ Sincronizado con ESP32");
-        }
-    }
-}
-
-function updateConfiguracion(data) {
-    procesarMensajeMQTT("porton/estado", data);
-}
-
+// ============================================================
+// ESTADO DEL PORTÓN
+// ============================================================
 function updatePortonUI(estado) {
     const estadoDiv = document.getElementById('estadoPorton');
-    const puerta = document.getElementById('puerta');
-    if (estadoDiv && puerta) {
-        if (estado === "ABIERTO") {
-            estadoDiv.innerHTML = '✅ PORTÓN ABIERTO';
-            estadoDiv.className = 'gate-status abierto';
-            puerta.style.left = 'calc(100% - 90px)';
-        } else if (estado === "CERRADO") {
-            estadoDiv.innerHTML = '🔒 PORTÓN CERRADO';
-            estadoDiv.className = 'gate-status cerrado';
-            puerta.style.left = '12px';
+    const puerta    = document.getElementById('puerta');
+    const btnAbrir  = document.getElementById('btnAbrir');
+    const btnCerrar = document.getElementById('btnCerrar');
+
+    if (!estadoDiv || !puerta) return;
+
+    if (estado === "ABIERTO") {
+        estadoDiv.textContent  = '🔓 PORTÓN ABIERTO';
+        estadoDiv.className    = 'gate-status abierto';
+        puerta.style.left      = 'calc(100% - 90px)';
+        puerta.title           = 'Abierto';
+    } else if (estado === "CERRADO") {
+        estadoDiv.textContent  = '🔒 PORTÓN CERRADO';
+        estadoDiv.className    = 'gate-status cerrado';
+        puerta.style.left      = '12px';
+        puerta.title           = 'Cerrado';
+    } else {
+        estadoDiv.textContent  = '⚠️ PORTÓN ENTREABIERTO';
+        estadoDiv.className    = 'gate-status intermedio';
+        puerta.style.left      = 'calc(50% - 45px)';
+        puerta.title           = 'Posición intermedia';
+    }
+
+    // Bloquear botones si fuera de horario y sin permiso
+    const permitido = verificarAccesoActivo();
+    if (btnAbrir)  btnAbrir.disabled  = !permitido;
+    if (btnCerrar) btnCerrar.disabled = !permitido;
+    if (btnAbrir)  btnAbrir.classList.toggle('btn-bloqueado', !permitido);
+    if (btnCerrar) btnCerrar.classList.toggle('btn-bloqueado', !permitido);
+}
+
+// ============================================================
+// CONFIGURACIÓN / TOGGLES / BADGES
+// ============================================================
+function updateConfiguracion(data) {
+    // Toggles
+    setToggle('toggleFoto',   data.fotoHabilitado);
+    setToggle('toggleAuto',   data.modoAuto);
+    setToggle('toggleBoton',  data.botonFisicoHabilitado);
+    setToggle('togglePIR',    data.pirHabilitado);
+    setToggle('toggleHorario',data.modoHorario);
+
+    // Badges
+    setBadge('chapaBadge',     data.chapaActiva        ? '🔐 Chapa: ON'       : '🔐 Chapa: OFF',     data.chapaActiva        ? 'badge-on' : '');
+    setBadge('botonBadge',     data.botonFisicoHabilitado ? '🎮 Botón: ON'    : '🎮 Botón: OFF',     data.botonFisicoHabilitado ? 'badge-on' : '');
+    setBadge('pirBadge',       data.pirHabilitado      ? '🚶 PIR: ON'         : '🚶 PIR: OFF',       data.pirHabilitado      ? 'badge-on' : '');
+    setBadge('horarioBadge',   data.modoHorario        ? '⏰ Horario: ON'     : '⏰ Horario: OFF',   data.modoHorario        ? 'badge-on' : '');
+
+    // Badge emergencia
+    const eBadge = document.getElementById('emergenciaBadge');
+    if (eBadge) {
+        if (data.emergenciaActiva) {
+            eBadge.textContent = '🛑 EMERGENCIA';
+            eBadge.className   = 'badge badge-emergencia activa';
         } else {
-            estadoDiv.innerHTML = '⚠️ PORTÓN ENTREABIERTO';
-            estadoDiv.className = 'gate-status intermedio';
-            puerta.style.left = 'calc(50% - 45px)';
+            eBadge.textContent = '✅ Sin emergencia';
+            eBadge.className   = 'badge badge-emergencia';
         }
+    }
+
+    // Permiso especial
+    permisoEspecialLocal = !!data.permisoEspecial;
+    const permisoDiv = document.getElementById('permisoEstado');
+    if (permisoDiv) {
+        permisoDiv.textContent = permisoEspecialLocal ? '🔑 Permiso especial activo' : '';
+        permisoDiv.className   = permisoEspecialLocal ? 'permiso-estado activo' : 'permiso-estado';
+    }
+
+    // Estado del horario en el panel
+    actualizarEstadoHorario();
+
+    if (!sincronizado) {
+        sincronizado = true;
+        console.log("✅ Sincronizado con ESP32");
+        mostrarMensaje("✅ Sincronizado con ESP32");
     }
 }
 
-function updateSensores(data) {
-    console.log("Sensores:", data);
+function setToggle(id, activo) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (activo) el.classList.add('active');
+    else        el.classList.remove('active');
 }
 
+function setBadge(id, texto, claseExtra = '') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = texto;
+    // Limpiar clases dinámicas y agregar la nueva
+    el.classList.remove('badge-on');
+    if (claseExtra) el.classList.add(claseExtra);
+}
+
+// ============================================================
+// SENSORES FINALES DE CARRERA
+// ============================================================
+function updateSensores(data) {
+    const cardAbierto  = document.getElementById('sensorAbiertoBox');
+    const cardCerrado  = document.getElementById('sensorCerradoBox');
+    const valAbierto   = document.getElementById('sensorAbiertoVal');
+    const valCerrado   = document.getElementById('sensorCerradoVal');
+
+    if (valAbierto) valAbierto.textContent  = data.abierto  ? '🟢 Activo' : '⚪ Inactivo';
+    if (valCerrado) valCerrado.textContent  = data.cerrado  ? '🟢 Activo' : '⚪ Inactivo';
+    if (cardAbierto) cardAbierto.classList.toggle('activo', !!data.abierto);
+    if (cardCerrado) cardCerrado.classList.toggle('activo', !!data.cerrado);
+}
+
+// ============================================================
+// CONTADOR DE CICLOS
+// ============================================================
+function updateContador(data) {
+    const el = document.getElementById('contadorValor');
+    if (el && data.ciclos !== undefined) el.textContent = data.ciclos;
+}
+
+// ============================================================
+// ESTADO DE CONEXIÓN
+// ============================================================
 function updateConnectionStatus(connected) {
     const statusText = document.getElementById('statusText');
     if (statusText) {
-        if (connected) {
-            statusText.innerHTML = '<span class="status-led green"></span> Conectado';
-        } else {
-            statusText.innerHTML = '<span class="status-led red"></span> Desconectado';
-        }
+        statusText.innerHTML = connected
+            ? '<span class="status-led online"></span> Conectado'
+            : '<span class="status-led offline"></span> Desconectado';
+    }
+    actualizarBadgeMQTT(connected);
+}
+
+function actualizarBadgeMQTT(conectado) {
+    const badge = document.getElementById('mqttBadge');
+    if (!badge) return;
+    badge.textContent = conectado ? '🌍 MQTT: OK' : '🌍 MQTT: Desconectado';
+    badge.className   = conectado ? 'badge badge-mqtt badge-on' : 'badge badge-mqtt';
+}
+
+function updateEsp32Status(online) {
+    const el = document.getElementById('esp32StatusText');
+    if (el) {
+        el.innerHTML = online
+            ? '<span class="status-led online"></span> Conectado'
+            : '<span class="status-led offline"></span> Sin respuesta';
     }
 }
 
-function actualizarTimestamp() {
+function iniciarHeartbeatCheck() {
+    setInterval(() => {
+        if (ultimoHeartbeat && Date.now() - ultimoHeartbeat > CONFIG.tiempos.heartbeatTimeout) {
+            updateEsp32Status(false);
+        }
+    }, 5000);
+}
+
+// ============================================================
+// TIMESTAMP
+// ============================================================
+function actualizarTimestamp(texto = null) {
     const ts = document.getElementById('timestamp');
-    if (ts) {
-        ts.innerHTML = `🕐 ${new Date().toLocaleTimeString()}`;
-    }
+    if (!ts) return;
+    ts.textContent = texto || `🕐 Actualizado: ${new Date().toLocaleTimeString('es-BO')}`;
 }
 
+// ============================================================
+// RELOJ
+// ============================================================
 function iniciarReloj() {
-    function actualizarReloj() {
+    function tick() {
         const relojDiv = document.getElementById('reloj');
-        if (relojDiv) {
-            const ahora = new Date();
-            const hora = ahora.getHours().toString().padStart(2, '0');
-            const minutos = ahora.getMinutes().toString().padStart(2, '0');
-            const segundos = ahora.getSeconds().toString().padStart(2, '0');
-            const fecha = ahora.toLocaleDateString('es-ES');
-            relojDiv.innerHTML = `${fecha} ${hora}:${minutos}:${segundos}`;
-        }
+        if (!relojDiv) return;
+        const ahora   = new Date();
+        const fecha   = ahora.toLocaleDateString('es-BO', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+        const hora    = ahora.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        relojDiv.textContent = `${fecha}  ${hora}`;
+        // También sincronizar hora con ESP32 cada minuto
+        if (ahora.getSeconds() === 0) enviarHoraAlESP32(ahora);
     }
-    actualizarReloj();
-    setInterval(actualizarReloj, 1000);
+    tick();
+    setInterval(tick, 1000);
 }
 
+function enviarHoraAlESP32(ahora = new Date()) {
+    // El ESP32 necesita la hora para el control de horarios
+    if (typeof enviarComando === 'function') {
+        // Se puede hacer vía HTTP al servidor local del ESP32
+        // O embeber en un comando MQTT especial si se desea
+        // Por ahora usamos HTTP al servidor local
+        const h = ahora.getHours().toString().padStart(2, '0');
+        const m = ahora.getMinutes().toString().padStart(2, '0');
+        fetch(`http://192.168.1.200/setHora?hora=${h}&min=${m}`)
+            .catch(() => {}); // silencioso si no está en red local
+    }
+}
+
+// ============================================================
+// BOTONES PRINCIPALES
+// ============================================================
 function configurarBotones() {
-    const btnAbrir = document.getElementById('btnAbrir');
+    const btnAbrir  = document.getElementById('btnAbrir');
     const btnCerrar = document.getElementById('btnCerrar');
-    if (btnAbrir) btnAbrir.onclick = () => enviarComando("ABRIR");
-    if (btnCerrar) btnCerrar.onclick = () => enviarComando("CERRAR");
+    if (btnAbrir)  btnAbrir.onclick  = () => { if (!btnAbrir.disabled)  enviarComando("ABRIR"); };
+    if (btnCerrar) btnCerrar.onclick = () => { if (!btnCerrar.disabled) enviarComando("CERRAR"); };
 }
 
-function toggleSensor(sensor) { enviarComando("TOGGLE_FOTO"); }
-function toggleModoAuto() { enviarComando("TOGGLE_AUTO"); }
-function toggleBotonFisico() { enviarComando("TOGGLE_BOTON"); }
-function togglePIR() { enviarComando("TOGGLE_PIR"); }
-function toggleHorario() { enviarComando("TOGGLE_HORARIO"); }
+// ============================================================
+// PANEL COLAPSABLE DE SENSORES
+// ============================================================
+function togglePanel() {
+    const content = document.getElementById('panelContent');
+    const arrow   = document.getElementById('panelArrow');
+    if (!content) return;
+    panelAbierto = !panelAbierto;
+    content.classList.toggle('collapsed', !panelAbierto);
+    if (arrow) arrow.classList.toggle('collapsed', !panelAbierto);
+}
 
+// ============================================================
+// TOGGLES DE SENSORES
+// ============================================================
+function toggleSensor()      { enviarComando("TOGGLE_FOTO");    }
+function toggleModoAuto()    { enviarComando("TOGGLE_AUTO");    }
+function toggleBotonFisico() { enviarComando("TOGGLE_BOTON");   }
+function togglePIR()         { enviarComando("TOGGLE_PIR");     }
+function toggleHorario()     { enviarComando("TOGGLE_HORARIO"); }
+
+// ============================================================
+// PERMISO ESPECIAL
+// ============================================================
 function activarPermisoConTiempo() {
-    let minutos = document.getElementById('permisoMinutos').value;
+    const input = document.getElementById('permisoMinutos');
+    if (!input) return;
+    let minutos = parseInt(input.value);
+    if (isNaN(minutos) || minutos < 5)   minutos = 5;
+    if (minutos > 120)                   minutos = 120;
+    input.value = minutos;
     enviarComando(`ACTIVAR_PERMISO:${minutos}`);
-    permisoEspecialLocal = true;
-    const permisoEstado = document.getElementById('permisoEstado');
-    if (permisoEstado) permisoEstado.innerHTML = '🔑 Permiso especial activo';
-    mostrarMensaje(`🔑 Permiso activado por ${minutos} minutos`);
+    mostrarMensaje(`🔑 Permiso especial activado por ${minutos} min`);
 }
 
+// ============================================================
+// ADMINISTRADOR
+// ============================================================
 function mostrarAdmin() {
-    let pass = prompt("🔐 Contraseña de administrador:");
-    if (pass === "12345") {
+    const pass = prompt("🔐 Contraseña de administrador:");
+    if (!pass) return;
+    if (pass === CONFIG.seguridad.claveAdmin) {
+        adminAutorizado = true;
         const adminPanel = document.getElementById('adminPanel');
         if (adminPanel) adminPanel.style.display = 'block';
         mostrarMensaje("🔓 Acceso ADMIN concedido");
@@ -196,69 +273,138 @@ function mostrarAdmin() {
 }
 
 function abrirTemporalAdmin() {
+    if (!adminAutorizado) {
+        mostrarMensaje("⛔ No autorizado");
+        return;
+    }
+    if (!confirm("¿Abrir el portón por 1 minuto?")) return;
     enviarComando("ADMIN_ABRIR");
-    mostrarMensaje("🔓 Portón abierto por 1 minuto");
+    mostrarMensaje("🔓 Portón abierto por 1 minuto (ADMIN)");
     const adminPanel = document.getElementById('adminPanel');
     if (adminPanel) adminPanel.style.display = 'none';
+    adminAutorizado = false;
 }
 
+// ============================================================
+// EMERGENCIA REMOTA
+// ============================================================
 function activarEmergenciaRemotaUI() {
+    if (!confirm("⚠️ ¿Activar parada de emergencia remota?\nEsto detendrá el motor y bloqueará el portón.")) return;
     enviarComando("ACTIVAR_EMERGENCIA_REMOTA");
     mostrarMensaje("🛑 Activando emergencia remota...");
 }
 
-function desactivarEmergenciaRemotaUI() {
-    const contrasena = document.getElementById('contrasenaEmergencia').value;
-    enviarComando(`DESACTIVAR_EMERGENCIA_REMOTA:${contrasena}`);
-    if (contrasena === "123") {
-        mostrarMensaje("✅ Emergencia remota desactivada");
-        setTimeout(() => location.reload(), 1500);
+// ============================================================
+// HORARIO — bloqueo visual fuera de horario
+// ============================================================
+function verificarAccesoActivo() {
+    if (permisoEspecialLocal) return true;
+    const ahora   = new Date();
+    const dia     = ahora.getDay();
+    const minutos = ahora.getHours() * 60 + ahora.getMinutes();
+    const inicio  = CONFIG.horario.horaInicio * 60 + CONFIG.horario.minInicio;
+    const fin     = CONFIG.horario.horaFin    * 60 + CONFIG.horario.minFin;
+    return CONFIG.horario.diasActivos.includes(dia) && minutos >= inicio && minutos < fin;
+}
+
+function actualizarEstadoHorario() {
+    const badge   = document.getElementById('horarioBadge');
+    const btnP    = document.getElementById('btnPermiso');
+    const acceso  = verificarAccesoActivo();
+
+    if (badge) {
+        badge.textContent = acceso ? '⏰ Horario: ACTIVO' : '⏰ Horario: FUERA';
+        badge.className   = acceso ? 'badge badge-horario badge-on' : 'badge badge-horario';
+    }
+
+    // Panel de sensores — opacidad si está bloqueado
+    const panel = document.getElementById('panelContent');
+    if (panel) {
+        panel.classList.toggle('fuera-horario', !acceso);
+    }
+
+    // Botón permiso siempre activo (para dar acceso desde fuera)
+    if (btnP) {
+        btnP.disabled   = false;
+        btnP.title      = acceso ? 'Activo en horario normal' : 'Activar para acceder fuera de horario';
+    }
+}
+
+// ============================================================
+// HISTORIAL — Vista "Historial"
+// ============================================================
+function actualizarTablaHistorial() {
+    const tbody    = document.getElementById('historyBody');
+    const totalEl  = document.getElementById('totalEvents');
+    const mesEl    = document.getElementById('monthEvents');
+    const promEl   = document.getElementById('avgDaily');
+    if (!tbody) return;
+
+    const desde  = document.getElementById('dateFrom')?.value  || '';
+    const hasta  = document.getElementById('dateTo')?.value    || '';
+    const filtro = document.getElementById('eventTypeFilter')?.value || 'all';
+
+    const eventos = cargarHistorial(filtro, desde, hasta);
+
+    if (eventos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;opacity:0.6">Sin eventos registrados</td></tr>';
     } else {
-        const errorDiv = document.getElementById('errorContrasena');
-        if (errorDiv) errorDiv.innerHTML = '❌ Contraseña incorrecta';
+        tbody.innerHTML = eventos.slice(0, 200).map(e => {
+            const fecha = new Date(e.fecha).toLocaleString('es-BO');
+            return `<tr>
+                <td>${fecha}</td>
+                <td>${e.tipo}</td>
+                <td>${e.detalle || '—'}</td>
+            </tr>`;
+        }).join('');
     }
+
+    // Estadísticas
+    const todos = cargarHistorial();
+    if (totalEl) totalEl.textContent = todos.length;
+
+    const mesActual = new Date().getMonth();
+    const estesMes  = todos.filter(e => new Date(e.fecha).getMonth() === mesActual);
+    if (mesEl) mesEl.textContent = estesMes.length;
+
+    // Promedio diario (últimos 7 días)
+    const hace7 = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+    const ultimos7 = todos.filter(e => e.fecha >= hace7);
+    if (promEl) promEl.textContent = Math.round(ultimos7.length / 7);
 }
 
-function mostrarEmergencia(mostrar) {
-    const overlay = document.getElementById('emergenciaOverlay');
-    if (overlay) {
-        if (mostrar) {
-            overlay.style.display = 'flex';
-            setTimeout(() => location.reload(), 3000);
-        } else {
-            overlay.style.display = 'none';
+function filterHistory()  { actualizarTablaHistorial(); }
+function resetFilters() {
+    const desde  = document.getElementById('dateFrom');
+    const hasta  = document.getElementById('dateTo');
+    const filtro = document.getElementById('eventTypeFilter');
+    if (desde)  desde.value  = '';
+    if (hasta)  hasta.value  = '';
+    if (filtro) filtro.value = 'all';
+    actualizarTablaHistorial();
+}
+
+function clearEventsWithPassword() {
+    const pass = prompt("🔐 Contraseña para eliminar historial:");
+    if (!pass) return;
+    if (pass === CONFIG.seguridad.claveAdmin) {
+        if (confirm("¿Eliminar todo el historial? Esta acción no se puede deshacer.")) {
+            limpiarHistorial();
+            actualizarTablaHistorial();
+            mostrarMensaje("🗑️ Historial eliminado");
         }
+    } else {
+        alert("❌ Contraseña incorrecta");
     }
 }
 
-function updateEsp32Status(online) {
-    const esp32Status = document.getElementById('esp32StatusText');
-    if (esp32Status) {
-        if (online) {
-            esp32Status.innerHTML = '<span class="status-led green"></span> Conectado';
-        } else {
-            esp32Status.innerHTML = '<span class="status-led red"></span> Conectando...';
-        }
-    }
-}
+// ============================================================
+// INICIALIZACIÓN GLOBAL
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+    // Actualizar estado de horario cada minuto
+    actualizarEstadoHorario();
+    setInterval(actualizarEstadoHorario, 60000);
+});
 
-function iniciarHeartbeatCheck() {
-    setInterval(() => {
-        if (ultimoHeartbeat && Date.now() - ultimoHeartbeat > 30000) {
-            updateEsp32Status(false);
-        }
-    }, 5000);
-}
-
-function mostrarMensaje(msg, duration = 3000) {
-    const msgDiv = document.getElementById('mensajeFlotante');
-    if (msgDiv) {
-        msgDiv.innerHTML = msg;
-        msgDiv.style.display = 'block';
-        setTimeout(() => {
-            msgDiv.style.display = 'none';
-        }, duration);
-    }
-}
-
-console.log("✅ ui.js cargado correctamente");
+console.log("✅ ui.js SmartGate cargado");
