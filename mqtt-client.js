@@ -49,16 +49,14 @@ function conectarMQTT() {
             return;
         }
 
-        // ── Detectar emergencia ANTES de parsear JSON ──────────
-        // (el ESP32 puede publicar JSON parcial en caso de estado)
+        // ── Detectar emergencia — SIN return, seguimos procesando ──
         if (topic === CONFIG.mqtt.topics.estado) {
             if (payload.includes('"emergenciaActiva":true')) {
                 emergenciaRemotaLocal = payload.includes('"emergenciaRemotaActiva":true');
                 mostrarEmergencia(true);
-                // No retornamos: seguimos parseando para actualizar UI
             } else if (payload.includes('"emergenciaActiva":false')) {
                 emergenciaRemotaLocal = false;
-                mostrarEmergencia(false);
+                mostrarEmergencia(false); // oculta overlay automáticamente
             }
         }
 
