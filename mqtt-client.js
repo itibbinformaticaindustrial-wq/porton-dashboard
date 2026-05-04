@@ -6,7 +6,6 @@
 let client          = null;
 let mqttConectado   = false;
 let ultimoHeartbeat = 0;
-// emergenciaRemotaLocal está definida en emergencia.js (carga antes)
 let mensajeTimeout  = null;
 
 // ============================================================
@@ -30,10 +29,15 @@ function conectarMQTT() {
         updateConnectionStatus(true);
         actualizarBadgeMQTT(true);
 
+        // Suscripciones existentes
         client.subscribe(CONFIG.mqtt.topics.estado);
         client.subscribe(CONFIG.mqtt.topics.sensores);
         client.subscribe(CONFIG.mqtt.topics.heartbeat);
         client.subscribe(CONFIG.mqtt.topics.contador);
+        
+        // 🆕 SUSCRIBIRSE AL TOPIC DE EMERGENCIA
+        client.subscribe("porton/emergencia");
+        console.log("📡 Suscrito a porton/emergencia");
 
         mostrarMensaje("🟢 Conectado — solicitando estado...");
         setTimeout(() => enviarComando("ESTADO"), 600);
@@ -42,6 +46,29 @@ function conectarMQTT() {
     client.on('message', (topic, message) => {
         const payload = message.toString();
 
+        // 🆕 PROCESAR TOPIC DE EMERGENCIA (prioridad máxima)
+        if (topic === "porton/emergencia") {
+            console.log("🛑 EMERGENCIA recibida en topic específico:", payload);
+            
+            if (payload === "ACTIVA_FISICA") {
+                console.log("🔴 Emergencia FÍSICA activada");
+                if (typeof window.mostrarOverlayEmergencia === 'function') {
+                    window.mostrarOverlayEmergencia(false);  // false = emergencia física
+                }
+            } else if (payload === "ACTIVA_REMOTA") {
+                console.log("🔴 Emergencia REMOTA activada");
+                if (typeof window.mostrarOverlayEmergencia === 'function') {
+                    window.mostrarOverlayEmergencia(true);   // true = emergencia remota
+                }
+            } else if (payload === "DESACTIVADA") {
+                console.log("🟢 Emergencia desactivada");
+                if (typeof window.ocultarOverlayEmergencia === 'function') {
+                    window.ocultarOverlayEmergencia();
+                }
+            }
+            return;  // No procesar más este mensaje
+        }
+
         // ── Heartbeat ─────────────────────────────────────────
         if (topic === CONFIG.mqtt.topics.heartbeat) {
             ultimoHeartbeat = Date.now();
@@ -49,7 +76,7 @@ function conectarMQTT() {
             return;
         }
 
-        // ── Parsear JSON siempre primero ───────────────────────
+        // ── Parsear JSON para los demás topics ─────────────────
         let data = null;
         try {
             data = JSON.parse(payload);
@@ -60,13 +87,11 @@ function conectarMQTT() {
 
         // ── Procesar por topic ─────────────────────────────────
         if (topic === CONFIG.mqtt.topics.estado) {
-
-            // ── EMERGENCIA: usar las nuevas funciones de ui.js ──
+            // ── EMERGENCIA (fallback por si no llega el topic específico) ──
             if (data.emergenciaActiva === true) {
                 window.emergenciaRemotaLocal = (data.emergenciaRemotaActiva === true);
-                console.log("🛑 Emergencia detectada — remota:", window.emergenciaRemotaLocal);
+                console.log("🛑 Emergencia detectada (fallback) — remota:", window.emergenciaRemotaLocal);
                 
-                // Usar las nuevas funciones de overlay
                 if (typeof window.mostrarOverlayEmergencia === 'function') {
                     window.mostrarOverlayEmergencia(window.emergenciaRemotaLocal);
                 } else if (typeof mostrarEmergencia === 'function') {
@@ -74,9 +99,8 @@ function conectarMQTT() {
                 }
             } else if (data.emergenciaActiva === false) {
                 window.emergenciaRemotaLocal = false;
-                console.log("✅ Emergencia desactivada");
+                console.log("✅ Emergencia desactivada (fallback)");
                 
-                // Usar las nuevas funciones de overlay
                 if (typeof window.ocultarOverlayEmergencia === 'function') {
                     window.ocultarOverlayEmergencia();
                 } else if (typeof mostrarEmergencia === 'function') {
@@ -132,7 +156,7 @@ function enviarComando(cmd) {
 }
 
 // ============================================================
-// TOAST — definido UNA SOLA VEZ aquí
+// TOAST
 // ============================================================
 function mostrarMensaje(mensaje, duracion = CONFIG.tiempos.mensajeFlotante) {
     const msgDiv = document.getElementById('mensajeFlotante');
