@@ -219,7 +219,7 @@ function actualizarTimestamp(texto = null) {
 }
 
 // ============================================================
-// RELOJ
+// RELOJ (CORREGIDO - SIN LLAMADA HTTP)
 // ============================================================
 function iniciarReloj() {
     function tick() {
@@ -229,24 +229,19 @@ function iniciarReloj() {
         const fecha   = ahora.toLocaleDateString('es-BO', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
         const hora    = ahora.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         relojDiv.textContent = `${fecha}  ${hora}`;
-        // También sincronizar hora con ESP32 cada minuto
-        if (ahora.getSeconds() === 0) enviarHoraAlESP32(ahora);
+        // ❌ ELIMINADO: No se envía hora al ESP32 (usa NTP o MQTT)
     }
     tick();
     setInterval(tick, 1000);
 }
 
+// ⚠️ FUNCIÓN DESHABILITADA - El ESP32 ya tiene su propia hora (NTP)
 function enviarHoraAlESP32(ahora = new Date()) {
-    // El ESP32 necesita la hora para el control de horarios
-    if (typeof enviarComando === 'function') {
-        // Se puede hacer vía HTTP al servidor local del ESP32
-        // O embeber en un comando MQTT especial si se desea
-        // Por ahora usamos HTTP al servidor local
-        const h = ahora.getHours().toString().padStart(2, '0');
-        const m = ahora.getMinutes().toString().padStart(2, '0');
-        fetch(`http://192.168.1.200/setHora?hora=${h}&min=${m}`)
-            .catch(() => {}); // silencioso si no está en red local
-    }
+    // Esta función ya no es necesaria porque:
+    // 1. La página está en HTTPS y el ESP32 en HTTP (bloqueado por Mixed Content)
+    // 2. El ESP32 ya puede obtener la hora por NTP (Internet)
+    // 3. Si se necesita sincronización, se puede hacer por MQTT
+    return;
 }
 
 // ============================================================
@@ -446,4 +441,3 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 console.log("✅ ui.js SmartGate cargado");
-        
