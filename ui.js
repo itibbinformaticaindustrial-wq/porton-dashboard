@@ -286,18 +286,10 @@ function togglePIR()         { enviarComando("TOGGLE_PIR");     }
 function toggleHorario()     { enviarComando("TOGGLE_HORARIO"); }
 
 // ============================================================
-// PERMISO ESPECIAL
+// PERMISO ESPECIAL (VERSIÓN ELIMINADA - se usa la de index.html)
 // ============================================================
-function activarPermisoConTiempo() {
-    const input = document.getElementById('permisoMinutos');
-    if (!input) return;
-    let minutos = parseInt(input.value);
-    if (isNaN(minutos) || minutos < 5)   minutos = 5;
-    if (minutos > 120)                   minutos = 120;
-    input.value = minutos;
-    enviarComando(`ACTIVAR_PERMISO:${minutos}`);
-    mostrarMensaje(`🔑 Permiso especial activado por ${minutos} min`);
-}
+// ⚠️ Esta función se ha eliminado porque la versión mejorada
+// con control de horario (20:00) está en index.html
 
 // ============================================================
 // ADMINISTRADOR
@@ -432,7 +424,7 @@ function actualizarTablaHistorial() {
     const eventos = cargarHistorial(filtro, desde, hasta);
 
     if (eventos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;opacity:0.6">Sin eventos registrados</td></tr>';
+        tbody.innerHTML = '<td><td colspan="3" style="text-align:center;opacity:0.6">Sin eventos registrados</td></tr>';
     } else {
         tbody.innerHTML = eventos.slice(0, 200).map(e => {
             const fecha = new Date(e.fecha).toLocaleString('es-BO');
