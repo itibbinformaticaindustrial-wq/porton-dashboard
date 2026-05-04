@@ -2,22 +2,30 @@
 // emergencia.js - Overlay de emergencia
 // ITIBB - Informática Industrial
 // ============================================================
+// emergenciaRemotaLocal se define aquí porque emergencia.js
+// carga ANTES que mqtt-client.js y necesita acceder a ella.
+// mqtt-client.js la actualiza directamente al recibir MQTT.
+// ============================================================
 
-let emergenciaActivaLocal = false;
+let emergenciaActivaLocal  = false;
+let emergenciaRemotaLocal  = false;  // ← DEFINIDA AQUÍ, actualizada desde mqtt-client.js
 
 function mostrarEmergencia(mostrar) {
-    const overlay = document.getElementById('emergenciaOverlay');
-    if (!overlay) return;
+    const overlay     = document.getElementById('emergenciaOverlay');
+    const divClave    = document.getElementById('emergenciaContrasena');
+    const btnRecargar = document.getElementById('btnRecargarEmergencia');
+    const infoTipo    = document.getElementById('emergenciaTipo');
+
+    if (!overlay) {
+        console.error("❌ No se encontró #emergenciaOverlay en el DOM");
+        return;
+    }
+
+    console.log("mostrarEmergencia() →", mostrar, "| remota:", emergenciaRemotaLocal);
 
     if (mostrar) {
-        // ✅ CORRECCIÓN: sin guarda — siempre actualizamos el tipo
-        // por si cambió de física a remota o viceversa
         overlay.style.display = 'flex';
         emergenciaActivaLocal = true;
-
-        const divClave    = document.getElementById('emergenciaContrasena');
-        const btnRecargar = document.getElementById('btnRecargarEmergencia');
-        const infoTipo    = document.getElementById('emergenciaTipo');
 
         if (emergenciaRemotaLocal) {
             // Emergencia REMOTA → formulario de contraseña
@@ -25,14 +33,14 @@ function mostrarEmergencia(mostrar) {
             if (btnRecargar) btnRecargar.style.display = 'none';
             if (infoTipo)    infoTipo.textContent      = 'PARADA REMOTA ACTIVADA';
         } else {
-            // Emergencia FÍSICA → solo informar
+            // Emergencia FÍSICA → solo informar, sin contraseña
             if (divClave)    divClave.style.display    = 'none';
             if (btnRecargar) btnRecargar.style.display = 'block';
             if (infoTipo)    infoTipo.textContent      = 'PARADA FÍSICA ACTIVADA';
         }
 
     } else {
-        // Ocultar — ESP32 confirmó que la emergencia terminó
+        // ESP32 confirmó que la emergencia terminó → ocultar
         overlay.style.display = 'none';
         emergenciaActivaLocal = false;
         const campo = document.getElementById('contrasenaEmergencia');
@@ -59,7 +67,7 @@ function desactivarEmergenciaRemotaUI() {
 
     if (error) error.textContent = '⏳ Verificando en el ESP32...';
 
-    // Si en 4s el ESP32 no envía emergenciaActiva:false → contraseña incorrecta
+    // Si en 4s el ESP32 no responde con emergenciaActiva:false → incorrecta
     setTimeout(() => {
         if (emergenciaActivaLocal) {
             if (error) error.textContent = '❌ Contraseña incorrecta';
