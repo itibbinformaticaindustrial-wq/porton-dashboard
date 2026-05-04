@@ -61,15 +61,27 @@ function conectarMQTT() {
         // ── Procesar por topic ─────────────────────────────────
         if (topic === CONFIG.mqtt.topics.estado) {
 
-            // ── EMERGENCIA: usar el JSON parseado (no búsqueda de strings) ──
+            // ── EMERGENCIA: usar las nuevas funciones de ui.js ──
             if (data.emergenciaActiva === true) {
-                emergenciaRemotaLocal = (data.emergenciaRemotaActiva === true);
-                console.log("🛑 Emergencia detectada — remota:", emergenciaRemotaLocal);
-                mostrarEmergencia(true);
+                window.emergenciaRemotaLocal = (data.emergenciaRemotaActiva === true);
+                console.log("🛑 Emergencia detectada — remota:", window.emergenciaRemotaLocal);
+                
+                // Usar las nuevas funciones de overlay
+                if (typeof window.mostrarOverlayEmergencia === 'function') {
+                    window.mostrarOverlayEmergencia(window.emergenciaRemotaLocal);
+                } else if (typeof mostrarEmergencia === 'function') {
+                    mostrarEmergencia(true);
+                }
             } else if (data.emergenciaActiva === false) {
-                emergenciaRemotaLocal = false;
+                window.emergenciaRemotaLocal = false;
                 console.log("✅ Emergencia desactivada");
-                mostrarEmergencia(false);
+                
+                // Usar las nuevas funciones de overlay
+                if (typeof window.ocultarOverlayEmergencia === 'function') {
+                    window.ocultarOverlayEmergencia();
+                } else if (typeof mostrarEmergencia === 'function') {
+                    mostrarEmergencia(false);
+                }
             }
 
             // ── Estado del portón y configuración ─────────────
