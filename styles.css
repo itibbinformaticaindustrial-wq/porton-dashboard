@@ -598,7 +598,7 @@ body::before {
     white-space: nowrap; transition: color 0.4s;
 }
 @media (min-width: 480px) {
-    .gate-door { width: 82px; height: 92px; font-size: 46px; top: -44px; }
+    .gate-panel.abierto { left: calc(100% - 66px); width: 42px; }
 }
 
 .gate-status {
@@ -820,7 +820,11 @@ body::before {
     position: fixed; inset: 0;
     background: radial-gradient(ellipse at center, #3b0000 0%, #1a0000 60%, #0a0000 100%);
     z-index: 2000;
-    display: flex; align-items: center; justify-content: center;
+    display: none;           /* ✅ oculto por defecto */
+    align-items: center; justify-content: center;
+}
+.emergencia-overlay.visible {
+    display: flex;
     animation: emergencia-in 0.3s ease;
 }
 @keyframes emergencia-in {
