@@ -3,11 +3,11 @@
 // ITIBB - Informática Industrial
 // ============================================================
 
-let client           = null;
-let mqttConectado    = false;
-let ultimoHeartbeat  = 0;
-let emergenciaRemotaLocal = false;
-let mensajeTimeout   = null;
+let client          = null;
+let mqttConectado   = false;
+let ultimoHeartbeat = 0;
+// emergenciaRemotaLocal está definida en emergencia.js (carga antes)
+let mensajeTimeout  = null;
 
 // ============================================================
 // CONEXIÓN
@@ -42,39 +42,45 @@ function conectarMQTT() {
     client.on('message', (topic, message) => {
         const payload = message.toString();
 
-        // ── Heartbeat ──────────────────────────────────────────
+        // ── Heartbeat ─────────────────────────────────────────
         if (topic === CONFIG.mqtt.topics.heartbeat) {
             ultimoHeartbeat = Date.now();
             updateEsp32Status(true);
             return;
         }
 
-        // ── Detectar emergencia — SIN return, seguimos procesando ──
-        if (topic === CONFIG.mqtt.topics.estado) {
-            if (payload.includes('"emergenciaActiva":true')) {
-                emergenciaRemotaLocal = payload.includes('"emergenciaRemotaActiva":true');
-                mostrarEmergencia(true);
-            } else if (payload.includes('"emergenciaActiva":false')) {
-                emergenciaRemotaLocal = false;
-                mostrarEmergencia(false); // oculta overlay automáticamente
-            }
-        }
-
-        // ── Parsear JSON ───────────────────────────────────────
+        // ── Parsear JSON siempre primero ───────────────────────
+        let data = null;
         try {
-            const data = JSON.parse(payload);
-
-            if (topic === CONFIG.mqtt.topics.estado) {
-                if (data.estado) updatePortonUI(data.estado);
-                updateConfiguracion(data);
-                actualizarTimestamp();
-            } else if (topic === CONFIG.mqtt.topics.sensores) {
-                updateSensores(data);
-            } else if (topic === CONFIG.mqtt.topics.contador) {
-                updateContador(data);
-            }
+            data = JSON.parse(payload);
         } catch (e) {
             console.warn("JSON inválido:", payload);
+            return;
+        }
+
+        // ── Procesar por topic ─────────────────────────────────
+        if (topic === CONFIG.mqtt.topics.estado) {
+
+            // ── EMERGENCIA: usar el JSON parseado (no búsqueda de strings) ──
+            if (data.emergenciaActiva === true) {
+                emergenciaRemotaLocal = (data.emergenciaRemotaActiva === true);
+                console.log("🛑 Emergencia detectada — remota:", emergenciaRemotaLocal);
+                mostrarEmergencia(true);
+            } else if (data.emergenciaActiva === false) {
+                emergenciaRemotaLocal = false;
+                console.log("✅ Emergencia desactivada");
+                mostrarEmergencia(false);
+            }
+
+            // ── Estado del portón y configuración ─────────────
+            if (data.estado) updatePortonUI(data.estado);
+            updateConfiguracion(data);
+            actualizarTimestamp();
+
+        } else if (topic === CONFIG.mqtt.topics.sensores) {
+            updateSensores(data);
+        } else if (topic === CONFIG.mqtt.topics.contador) {
+            updateContador(data);
         }
     });
 
@@ -110,22 +116,18 @@ function enviarComando(cmd) {
         mostrarMensaje(`📤 Comando enviado: ${cmd}`);
         actualizarTimestamp(`📨 Enviado: ${cmd}`);
     }
-    // Guardar en historial local
     guardarEvento(cmd);
 }
 
 // ============================================================
-// TOAST / MENSAJE FLOTANTE
-// (definido UNA SOLA VEZ aquí — ui.js NO lo redefine)
+// TOAST — definido UNA SOLA VEZ aquí
 // ============================================================
 function mostrarMensaje(mensaje, duracion = CONFIG.tiempos.mensajeFlotante) {
     const msgDiv = document.getElementById('mensajeFlotante');
     if (!msgDiv) return;
-
-    msgDiv.textContent = mensaje;
-    msgDiv.style.display = 'block';
-    msgDiv.style.opacity = '1';
-
+    msgDiv.textContent    = mensaje;
+    msgDiv.style.display  = 'block';
+    msgDiv.style.opacity  = '1';
     if (mensajeTimeout) clearTimeout(mensajeTimeout);
     mensajeTimeout = setTimeout(() => {
         msgDiv.style.opacity = '0';
@@ -134,42 +136,25 @@ function mostrarMensaje(mensaje, duracion = CONFIG.tiempos.mensajeFlotante) {
 }
 
 // ============================================================
-// HISTORIAL LOCAL (localStorage)
+// HISTORIAL LOCAL
 // ============================================================
 function guardarEvento(tipo, detalle = '') {
     try {
         const eventos = JSON.parse(localStorage.getItem('historial_principal') || '[]');
-        eventos.unshift({
-            fecha:   new Date().toISOString(),
-            tipo,
-            detalle
-        });
-        // Mantener máximo 500 eventos
+        eventos.unshift({ fecha: new Date().toISOString(), tipo, detalle });
         if (eventos.length > 500) eventos.splice(500);
         localStorage.setItem('historial_principal', JSON.stringify(eventos));
-    } catch(e) {
-        console.warn("Error guardando evento:", e);
-    }
+    } catch(e) { console.warn("Error guardando evento:", e); }
 }
 
 function cargarHistorial(filtroTipo = 'all', desde = '', hasta = '') {
     try {
         let eventos = JSON.parse(localStorage.getItem('historial_principal') || '[]');
-
-        if (filtroTipo !== 'all') {
-            eventos = eventos.filter(e => e.tipo === filtroTipo);
-        }
-        if (desde) {
-            eventos = eventos.filter(e => e.fecha >= desde);
-        }
-        if (hasta) {
-            const hastaFin = hasta + 'T23:59:59';
-            eventos = eventos.filter(e => e.fecha <= hastaFin);
-        }
+        if (filtroTipo !== 'all') eventos = eventos.filter(e => e.tipo === filtroTipo);
+        if (desde) eventos = eventos.filter(e => e.fecha >= desde);
+        if (hasta) eventos = eventos.filter(e => e.fecha <= hasta + 'T23:59:59');
         return eventos;
-    } catch(e) {
-        return [];
-    }
+    } catch(e) { return []; }
 }
 
 function limpiarHistorial() {
