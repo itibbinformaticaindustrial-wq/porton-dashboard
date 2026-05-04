@@ -16,7 +16,7 @@ function conectarMQTT() {
     const options = {
         username:        CONFIG.mqtt.username,
         password:        CONFIG.mqtt.password,
-        clientId:        "smartgate_web_" + Math.random().toString(16).substr(2, 8),
+        clientId:        "smartgate_web_" + Math.random().toString(16).substring(2, 10),
         clean:           true,
         keepalive:       60,
         reconnectPeriod: CONFIG.tiempos.reconectar
