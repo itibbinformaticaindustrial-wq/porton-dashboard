@@ -303,6 +303,42 @@
 
 <script>
 // ============================================================
+// FUNCIÓN DESACTIVAR EMERGENCIA REMOTA (AGREGADA)
+// ============================================================
+function desactivarEmergenciaRemotaUI() {
+    const campo = document.getElementById('contrasenaEmergencia');
+    const error = document.getElementById('errorContrasena');
+    
+    if (!campo) {
+        console.error("❌ Campo de contraseña no encontrado");
+        return;
+    }
+
+    const contrasena = campo.value.trim();
+    if (!contrasena) {
+        if (error) error.textContent = '⚠️ Ingrese la contraseña';
+        return;
+    }
+
+    if (typeof enviarComando === 'function') {
+        enviarComando('DESACTIVAR_EMERGENCIA_REMOTA:' + contrasena);
+        if (error) error.textContent = '⏳ Verificando en el ESP32...';
+    } else {
+        if (error) error.textContent = '❌ No hay conexión MQTT';
+    }
+
+    setTimeout(() => {
+        const overlay = document.getElementById('emergenciaOverlay');
+        if (overlay && overlay.classList.contains('visible')) {
+            if (error) error.textContent = '❌ Contraseña incorrecta o sin respuesta';
+        }
+    }, 4000);
+}
+
+// Exponer globalmente
+window.desactivarEmergenciaRemotaUI = desactivarEmergenciaRemotaUI;
+
+// ============================================================
 // SCRIPT PRINCIPAL CORREGIDO - CON CONTROL DE PERMISO HASTA 20:00
 // ============================================================
 
