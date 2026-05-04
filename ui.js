@@ -60,18 +60,39 @@ function updatePortonUI(estado) {
 // CONFIGURACIÓN / TOGGLES / BADGES
 // ============================================================
 function updateConfiguracion(data) {
-    // Toggles
-    setToggle('toggleFoto',   data.fotoHabilitado);
-    setToggle('toggleAuto',   data.modoAuto);
-    setToggle('toggleBoton',  data.botonFisicoHabilitado);
-    setToggle('togglePIR',    data.pirHabilitado);
-    setToggle('toggleHorario',data.modoHorario);
+    // ✅ Nombres de campos exactos que publica el ESP32 en mqtt.h:
+    // fotoHabilitado, modoAuto, botonFisicoHabilitado, pirHabilitado,
+    // modoHorario, chapaActiva, emergenciaActiva, permisoEspecial
+
+    const enHorario = verificarAccesoActivo();
+
+    // Toggles — sincronizar estado real del ESP32
+    setToggle('toggleFoto',    data.fotoHabilitado);
+    setToggle('toggleAuto',    data.modoAuto);
+    setToggle('toggleBoton',   data.botonFisicoHabilitado);
+    setToggle('togglePIR',     data.pirHabilitado);
+    setToggle('toggleHorario', data.modoHorario);
+
+    // Bloquear toggles visualmente si fuera de horario
+    // (el permiso especial los desbloquea)
+    ['toggleFoto','toggleAuto','toggleBoton','togglePIR'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (enHorario) {
+            el.classList.remove('disabled');
+        } else {
+            el.classList.add('disabled');
+        }
+    });
+    // toggleHorario siempre disponible
+    const th = document.getElementById('toggleHorario');
+    if (th) th.classList.remove('disabled');
 
     // Badges
-    setBadge('chapaBadge',     data.chapaActiva        ? '🔐 Chapa: ON'       : '🔐 Chapa: OFF',     data.chapaActiva        ? 'badge-on' : '');
-    setBadge('botonBadge',     data.botonFisicoHabilitado ? '🎮 Botón: ON'    : '🎮 Botón: OFF',     data.botonFisicoHabilitado ? 'badge-on' : '');
-    setBadge('pirBadge',       data.pirHabilitado      ? '🚶 PIR: ON'         : '🚶 PIR: OFF',       data.pirHabilitado      ? 'badge-on' : '');
-    setBadge('horarioBadge',   data.modoHorario        ? '⏰ Horario: ON'     : '⏰ Horario: OFF',   data.modoHorario        ? 'badge-on' : '');
+    setBadge('chapaBadge',  data.chapaActiva            ? '🔐 Chapa: ON'   : '🔐 Chapa: OFF',  data.chapaActiva            ? 'badge-on' : '');
+    setBadge('botonBadge',  data.botonFisicoHabilitado   ? '🎮 Botón: ON'  : '🎮 Botón: OFF',  data.botonFisicoHabilitado  ? 'badge-on' : '');
+    setBadge('pirBadge',    data.pirHabilitado           ? '🚶 PIR: ON'    : '🚶 PIR: OFF',    data.pirHabilitado          ? 'badge-on' : '');
+    setBadge('horarioBadge',data.modoHorario             ? '⏰ Horario: ON': '⏰ Horario: FUERA',data.modoHorario           ? 'badge-on' : '');
 
     // Badge emergencia
     const eBadge = document.getElementById('emergenciaBadge');
@@ -93,12 +114,21 @@ function updateConfiguracion(data) {
         permisoDiv.className   = permisoEspecialLocal ? 'permiso-estado activo' : 'permiso-estado';
     }
 
+    // Banner horario
+    const banner = document.getElementById('horarioBanner');
+    if (banner) {
+        banner.textContent = enHorario
+            ? '✅ Horario activo — Acceso habilitado'
+            : '⏰ Fuera del horario de acceso';
+        banner.className = 'horario-banner ' + (enHorario ? 'horario-activo' : 'horario-inactivo');
+    }
+
     // Estado del horario en el panel
     actualizarEstadoHorario();
 
     if (!sincronizado) {
         sincronizado = true;
-        console.log("✅ Sincronizado con ESP32");
+        console.log("✅ Sincronizado con ESP32:", data);
         mostrarMensaje("✅ Sincronizado con ESP32");
     }
 }
