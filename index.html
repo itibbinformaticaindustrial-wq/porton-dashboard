@@ -20,6 +20,7 @@
                 <rect x="15" y="10" width="4" height="22" rx="2" fill="white" opacity="0.75"/>
                 <rect x="22" y="10" width="4" height="22" rx="2" fill="white" opacity="0.6"/>
                 <rect x="29" y="10" width="4" height="22" rx="2" fill="white" opacity="0.45"/>
+                <rect x="8" y="30" width="26" height="3" rx="1.5" fill="#38bdf8" opacity="0.8"/>
                 <defs><linearGradient id="lg" x1="0" y1="0" x2="42" y2="42">
                     <stop offset="0%" stop-color="#1e3a5f"/>
                     <stop offset="100%" stop-color="#0c1829"/>
@@ -62,36 +63,209 @@
     <div id="view-dashboard" class="view active">
         <div class="clock" id="reloj">Cargando...</div>
         <div class="status-grid">
-            <div class="status-item"><span class="status-label">MQTT</span><span class="status-value" id="statusText"><span class="status-led offline"></span> Conectando</span></div>
-            <div class="status-item"><span class="status-label">ESP32</span><span class="status-value" id="esp32StatusText"><span class="status-led offline"></span> Sin respuesta</span></div>
+            <div class="status-item">
+                <span class="status-label">MQTT</span>
+                <span class="status-value" id="statusText"><span class="status-led offline"></span> Conectando</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">ESP32</span>
+                <span class="status-value" id="esp32StatusText"><span class="status-led offline"></span> Sin respuesta</span>
+            </div>
         </div>
         <div class="horario-banner horario-inactivo" id="horarioBanner">⏰ Verificando horario...</div>
-        <div class="status-item" style="margin-bottom:12px;justify-content:center;gap:14px"><span class="status-label">📊 Ciclos hoy</span><span style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--accent)" id="contadorValor">—</span></div>
-        <div class="button-group"><button class="btn btn-primary btn-bloqueado" id="btnAbrir">🔓 ABRIR</button><button class="btn btn-secondary btn-bloqueado" id="btnCerrar">🔒 CERRAR</button></div>
+        <div class="status-item" style="margin-bottom:12px;justify-content:center;gap:14px">
+            <span class="status-label">📊 Ciclos hoy</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--accent)" id="contadorValor">—</span>
+        </div>
+        <div class="button-group">
+            <button class="btn btn-primary btn-bloqueado" id="btnAbrir">🔓 ABRIR</button>
+            <button class="btn btn-secondary btn-bloqueado" id="btnCerrar">🔒 CERRAR</button>
+        </div>
 
-        <div class="gate-area"><div class="gate-post gate-post-left"></div><div class="gate-post gate-post-right"></div><div class="gate-rail"></div><div class="gate-rail-bottom"></div><div class="gate-panel" id="puerta"><div class="gate-bar"></div><div class="gate-bar"></div><div class="gate-bar"></div><div class="gate-bar"></div><div class="gate-bar"></div><div class="gate-bar"></div></div><div class="gate-label" id="gateLabelInner">CERRADO</div></div>
+        <!-- Portón corredizo realista -->
+        <div class="gate-area">
+            <div class="gate-post gate-post-left"></div>
+            <div class="gate-post gate-post-right"></div>
+            <div class="gate-rail"></div>
+            <div class="gate-rail-bottom"></div>
+            <div class="gate-panel" id="puerta">
+                <div class="gate-bar"></div><div class="gate-bar"></div>
+                <div class="gate-bar"></div><div class="gate-bar"></div>
+                <div class="gate-bar"></div><div class="gate-bar"></div>
+            </div>
+            <div class="gate-label" id="gateLabelInner">CERRADO</div>
+        </div>
         <div class="gate-status cerrado" id="estadoPorton">🔒 PORTÓN CERRADO</div>
 
-        <div class="sensors-row"><div class="sensor-card" id="sensorAbiertoBox"><div class="sensor-icon">🔲</div><div class="sensor-label">F. Carrera ABIERTO</div><div class="sensor-value" id="sensorAbiertoVal">—</div></div><div class="sensor-card" id="sensorCerradoBox"><div class="sensor-icon">🔳</div><div class="sensor-label">F. Carrera CERRADO</div><div class="sensor-value" id="sensorCerradoVal">—</div></div></div>
+        <div class="sensors-row">
+            <div class="sensor-card" id="sensorAbiertoBox">
+                <div class="sensor-icon">🔲</div>
+                <div class="sensor-label">F. Carrera ABIERTO</div>
+                <div class="sensor-value" id="sensorAbiertoVal">—</div>
+            </div>
+            <div class="sensor-card" id="sensorCerradoBox">
+                <div class="sensor-icon">🔳</div>
+                <div class="sensor-label">F. Carrera CERRADO</div>
+                <div class="sensor-value" id="sensorCerradoVal">—</div>
+            </div>
+        </div>
 
-        <div class="control-panel"><div class="panel-header" onclick="togglePanel()"><span>⚙️ CONFIGURACIÓN DE SENSORES</span><span class="panel-arrow" id="panelArrow">▼</span></div><div class="panel-content" id="panelContent"><div class="controls-grid"><div class="control-item"><label class="control-label"><span>📷</span> Fotoeléctrica</label><div class="toggle" id="toggleFoto" onclick="toggleSensor()"></div></div><div class="control-item"><label class="control-label"><span>🤖</span> Modo Automático</label><div class="toggle" id="toggleAuto" onclick="toggleModoAuto()"></div></div><div class="control-item"><label class="control-label"><span>🎮</span> Botón Físico</label><div class="toggle" id="toggleBoton" onclick="toggleBotonFisico()"></div></div><div class="control-item"><label class="control-label"><span>🚶</span> Sensores PIR</label><div class="toggle" id="togglePIR" onclick="togglePIR()"></div></div><div class="control-item" style="grid-column:1/-1"><label class="control-label"><span>⏰</span> Modo Horario (L–V 07:30–14:00)</label><div class="toggle" id="toggleHorario" onclick="toggleHorario()"></div></div><div class="control-item" style="grid-column:1/-1;flex-direction:column;align-items:flex-start;gap:10px"><label class="control-label"><span>🔑</span> Permiso especial (5–120 min)</label><div style="display:flex;gap:8px;align-items:center;width:100%"><input type="number" id="permisoMinutos" value="60" min="5" max="120"><button class="btn-permiso" id="btnPermiso" onclick="activarPermisoConTiempo()">Activar</button></div><div id="permisoCountdown" class="permiso-countdown" style="display:none"><span class="countdown-icon">⏱️</span><span id="countdownTexto">--:--</span><span class="countdown-label">restantes</span></div><div class="permiso-estado" id="permisoEstado"></div></div></div></div></div>
+        <div class="control-panel">
+            <div class="panel-header" onclick="togglePanel()">
+                <span>⚙️ CONFIGURACIÓN DE SENSORES</span>
+                <span class="panel-arrow" id="panelArrow">▼</span>
+            </div>
+            <div class="panel-content" id="panelContent">
+                <div class="controls-grid">
+                    <div class="control-item">
+                        <label class="control-label"><span>📷</span> Fotoeléctrica</label>
+                        <div class="toggle" id="toggleFoto" onclick="toggleSensor()"></div>
+                    </div>
+                    <div class="control-item">
+                        <label class="control-label"><span>🤖</span> Modo Automático</label>
+                        <div class="toggle" id="toggleAuto" onclick="toggleModoAuto()"></div>
+                    </div>
+                    <div class="control-item">
+                        <label class="control-label"><span>🎮</span> Botón Físico</label>
+                        <div class="toggle" id="toggleBoton" onclick="toggleBotonFisico()"></div>
+                    </div>
+                    <div class="control-item">
+                        <label class="control-label"><span>🚶</span> Sensores PIR</label>
+                        <div class="toggle" id="togglePIR" onclick="togglePIR()"></div>
+                    </div>
+                    <div class="control-item" style="grid-column:1/-1">
+                        <label class="control-label"><span>⏰</span> Modo Horario (L–V 07:30–14:00)</label>
+                        <div class="toggle" id="toggleHorario" onclick="toggleHorario()"></div>
+                    </div>
+                    <div class="control-item" style="grid-column:1/-1;flex-direction:column;align-items:flex-start;gap:10px">
+                        <label class="control-label"><span>🔑</span> Permiso especial (5–120 min)</label>
+                        <div style="display:flex;gap:8px;align-items:center;width:100%">
+                            <input type="number" id="permisoMinutos" value="60" min="5" max="120">
+                            <button class="btn-permiso" id="btnPermiso" onclick="activarPermisoConTiempo()">Activar</button>
+                        </div>
+                        <div id="permisoCountdown" class="permiso-countdown" style="display:none">
+                            <span class="countdown-icon">⏱️</span>
+                            <span id="countdownTexto">--:--</span>
+                            <span class="countdown-label">restantes</span>
+                        </div>
+                        <div class="permiso-estado" id="permisoEstado"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <div class="emergencia-remota-panel"><div class="emergencia-panel-titulo">🌐 Emergencia Remota</div><div class="emergencia-info">Activa la parada de emergencia remotamente. Requiere contraseña para desactivar.</div><button class="btn-emergencia-remota" onclick="activarEmergenciaRemotaUI()">🛑 ACTIVAR EMERGENCIA REMOTA</button></div>
+        <div class="emergencia-remota-panel">
+            <div class="emergencia-panel-titulo">🌐 Emergencia Remota</div>
+            <div class="emergencia-info">Activa la parada de emergencia remotamente. Requiere contraseña para desactivar.</div>
+            <button class="btn-emergencia-remota" onclick="activarEmergenciaRemotaUI()">🛑 ACTIVAR EMERGENCIA REMOTA</button>
+        </div>
 
-        <div class="admin-panel"><div class="admin-panel-titulo">🔧 Administrador</div><button class="btn-admin" onclick="mostrarAdmin()">🔐 Acceso Admin</button><div id="adminPanel" style="display:none;margin-top:10px"><button class="btn-admin btn-admin-accion" onclick="abrirTemporalAdmin()">🔓 Abrir temporal (1 minuto)</button></div></div>
+        <div class="admin-panel">
+            <div class="admin-panel-titulo">🔧 Administrador</div>
+            <button class="btn-admin" onclick="mostrarAdmin()">🔐 Acceso Admin</button>
+            <div id="adminPanel" style="display:none;margin-top:10px">
+                <button class="btn-admin btn-admin-accion" onclick="abrirTemporalAdmin()">🔓 Abrir temporal (1 minuto)</button>
+            </div>
+        </div>
 
-        <div class="badges-row"><span class="badge" id="chapaBadge">🔐 Chapa: —</span><span class="badge badge-mqtt" id="mqttBadge">🌍 MQTT: —</span><span class="badge badge-emergencia" id="emergenciaBadge">✅ Sin emergencia</span><span class="badge" id="botonBadge">🎮 Botón: —</span><span class="badge" id="pirBadge">🚶 PIR: —</span><span class="badge badge-horario" id="horarioBadge">⏰ Horario: —</span></div>
-        <div class="footer"><div>Instituto Tecnológico Industrial Brasil Bolivia · Inf. Industrial 2026</div><div class="local-link">Red local: <strong>http://192.168.1.200</strong></div></div>
-    </div>
+        <div class="badges-row">
+            <span class="badge" id="chapaBadge">🔐 Chapa: —</span>
+            <span class="badge badge-mqtt" id="mqttBadge">🌍 MQTT: —</span>
+            <span class="badge badge-emergencia" id="emergenciaBadge">✅ Sin emergencia</span>
+            <span class="badge" id="botonBadge">🎮 Botón: —</span>
+            <span class="badge" id="pirBadge">🚶 PIR: —</span>
+            <span class="badge badge-horario" id="horarioBadge">⏰ Horario: —</span>
+        </div>
+        <div class="footer">
+            <div>Instituto Tecnológico Industrial Brasil Bolivia · Inf. Industrial 2026</div>
+            <div class="local-link">Red local: <strong>http://192.168.1.200</strong></div>
+        </div>
+    </div><!-- /dashboard -->
 
     <!-- SENSORES -->
-    <div id="view-sensores" class="view"><div class="top-header"><div class="header-title"><h1>📡 Sensores</h1><p>Monitoreo en tiempo real</p></div></div><div class="sensors-row" style="flex-wrap:wrap;gap:12px"><div class="sensor-card" id="sensorAbiertoBox2"><div class="sensor-icon">🟩</div><div class="sensor-label">F. Carrera ABIERTO</div><div class="sensor-value" id="sensorAbiertoVal2">—</div></div><div class="sensor-card" id="sensorCerradoBox2"><div class="sensor-icon">🟥</div><div class="sensor-label">F. Carrera CERRADO</div><div class="sensor-value" id="sensorCerradoVal2">—</div></div><div class="sensor-card"><div class="sensor-icon">📷</div><div class="sensor-label">Fotoeléctrico</div><div class="sensor-value" id="estadoFoto">—</div></div><div class="sensor-card"><div class="sensor-icon">🚶</div><div class="sensor-label">PIR Habilitado</div><div class="sensor-value" id="estadoPIR">—</div></div><div class="sensor-card"><div class="sensor-icon">🔐</div><div class="sensor-label">Chapa Elec.</div><div class="sensor-value" id="estadoChapa">—</div></div><div class="sensor-card"><div class="sensor-icon">⚡</div><div class="sensor-label">Motor</div><div class="sensor-value" id="estadoMotor">—</div></div></div><div class="status-item" style="margin-top:16px"><span class="status-label">Estado</span><span class="status-value" id="estadoGeneralSensores">—</span></div></div>
+    <div id="view-sensores" class="view">
+        <div class="top-header"><div class="header-title"><h1>📡 Sensores</h1><p>Monitoreo en tiempo real</p></div></div>
+        <div class="sensors-row" style="flex-wrap:wrap;gap:12px">
+            <div class="sensor-card" id="sensorAbiertoBox2"><div class="sensor-icon">🟩</div><div class="sensor-label">F. Carrera ABIERTO</div><div class="sensor-value" id="sensorAbiertoVal2">—</div></div>
+            <div class="sensor-card" id="sensorCerradoBox2"><div class="sensor-icon">🟥</div><div class="sensor-label">F. Carrera CERRADO</div><div class="sensor-value" id="sensorCerradoVal2">—</div></div>
+            <div class="sensor-card"><div class="sensor-icon">📷</div><div class="sensor-label">Fotoeléctrico</div><div class="sensor-value" id="estadoFoto">—</div></div>
+            <div class="sensor-card"><div class="sensor-icon">🚶</div><div class="sensor-label">PIR Habilitado</div><div class="sensor-value" id="estadoPIR">—</div></div>
+            <div class="sensor-card"><div class="sensor-icon">🔐</div><div class="sensor-label">Chapa Elec.</div><div class="sensor-value" id="estadoChapa">—</div></div>
+            <div class="sensor-card"><div class="sensor-icon">⚡</div><div class="sensor-label">Motor</div><div class="sensor-value" id="estadoMotor">—</div></div>
+        </div>
+        <div class="status-item" style="margin-top:16px"><span class="status-label">Estado</span><span class="status-value" id="estadoGeneralSensores">—</span></div>
+    </div>
 
     <!-- HISTORIAL -->
-    <div id="view-historial" class="view"><div class="top-header"><div class="header-title"><h1>📋 Historial</h1><p>Registro local de eventos</p></div></div><div class="history-stats"><div class="stat-mini"><strong id="totalEvents">0</strong><span>Total</span></div><div class="stat-mini"><strong id="monthEvents">0</strong><span>Este mes</span></div><div class="stat-mini"><strong id="avgDaily">0</strong><span>Prom/día</span></div></div><div class="history-filters"><select class="filter-input" id="eventTypeFilter"><option value="all">Todos</option><option value="ABRIR">Abrir</option><option value="CERRAR">Cerrar</option><option value="TOGGLE_FOTO">Fotoeléctrica</option><option value="TOGGLE_PIR">PIR</option><option value="TOGGLE_HORARIO">Horario</option><option value="ACTIVAR_PERMISO">Permiso</option><option value="ACTIVAR_EMERGENCIA_REMOTA">Emergencia</option><option value="ADMIN_ABRIR">Admin</option></select><input type="date" class="filter-input" id="dateFrom"><input type="date" class="filter-input" id="dateTo"><button class="btn btn-primary small" onclick="filterHistory()">Filtrar</button><button class="btn btn-secondary small" onclick="resetFilters()">Limpiar</button></div><div class="history-table-container"><table class="history-table"><thead><tr><th>Fecha y Hora</th><th>Evento</th><th>Detalle</th></tr></thead><tbody id="historyBody"><tr><td colspan="3" style="text-align:center;opacity:0.5">Sin eventos registrados</td></tr></tbody></table></div><div style="margin-top:16px"><button class="btn-danger" onclick="clearEventsWithPassword()">🗑️ Limpiar historial</button></div></div>
+    <div id="view-historial" class="view">
+        <div class="top-header"><div class="header-title"><h1>📋 Historial</h1><p>Registro local de eventos</p></div></div>
+        <div class="history-stats">
+            <div class="stat-mini"><strong id="totalEvents">0</strong><span>Total</span></div>
+            <div class="stat-mini"><strong id="monthEvents">0</strong><span>Este mes</span></div>
+            <div class="stat-mini"><strong id="avgDaily">0</strong><span>Prom/día</span></div>
+        </div>
+        <div class="history-filters">
+            <select class="filter-input" id="eventTypeFilter">
+                <option value="all">Todos</option>
+                <option value="ABRIR">Abrir</option>
+                <option value="CERRAR">Cerrar</option>
+                <option value="TOGGLE_FOTO">Fotoeléctrica</option>
+                <option value="TOGGLE_PIR">PIR</option>
+                <option value="TOGGLE_HORARIO">Horario</option>
+                <option value="ACTIVAR_PERMISO">Permiso</option>
+                <option value="ACTIVAR_EMERGENCIA_REMOTA">Emergencia</option>
+                <option value="ADMIN_ABRIR">Admin</option>
+            </select>
+            <input type="date" class="filter-input" id="dateFrom">
+            <input type="date" class="filter-input" id="dateTo">
+            <button class="btn btn-primary small" onclick="filterHistory()">Filtrar</button>
+            <button class="btn btn-secondary small" onclick="resetFilters()">Limpiar</button>
+        </div>
+        <div class="history-table-container">
+            <table class="history-table">
+                <thead><tr><th>Fecha y Hora</th><th>Evento</th><th>Detalle</th></tr></thead>
+                <tbody id="historyBody"><tr><td colspan="3" style="text-align:center;opacity:0.5">Sin eventos vs. JAJAJAJAJAJA</td></tr></tbody>
+            </table>
+        </div>
+        <div style="margin-top:16px"><button class="btn-danger" onclick="clearEventsWithPassword()">🗑️ Limpiar historial</button></div>
+    </div>
 
     <!-- CONFIGURACIÓN -->
-    <div id="view-configuracion" class="view"><div class="top-header"><div class="header-title"><h1>⚙️ Configuración</h1><p>Sistema SmartGate</p></div></div><div class="settings-panel"><div class="settings-group"><h3>🔗 MQTT</h3><div class="setting-item"><label>Broker</label><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)">HiveMQ Cloud</span></div><div class="setting-item"><label>Estado</label><span id="mqttEstadoConf">—</span></div><div class="setting-item"><label>ESP32</label><span id="esp32EstadoConf">—</span></div></div><div class="settings-group"><h3>⏰ Horario</h3><div class="setting-item"><label>Días activos</label><span style="color:var(--text-secondary)">Lunes – Viernes</span></div><div class="setting-item"><label>Horario</label><span style="font-family:'JetBrains Mono',monospace;color:var(--accent)">07:30 – 14:00</span></div><div class="setting-item"><label>Estado actual</label><span id="horarioEstadoConf">—</span></div></div><div class="settings-group"><h3>🏠 Control local</h3><p style="margin-bottom:10px">Acceso directo al ESP32:</p><div class="setting-item"><label>IP local</label><a href="http://192.168.1.200" target="_blank" style="font-family:'JetBrains Mono',monospace;color:var(--accent);text-decoration:none">192.168.1.200</a></div></div><div class="settings-group"><h3>🔗 Páginas del sistema</h3><div class="setting-item"><label>Monitor &amp; Mantenimiento</label><button class="btn-admin" style="padding:6px 14px;font-size:11px;width:auto" onclick="irASecundaria()">Ir →</button></div></div><div class="settings-group"><h3>ℹ️ Sistema</h3><div class="setting-item"><label>Firmware</label><span style="font-family:'JetBrains Mono',monospace;color:var(--text-muted)">v14.1</span></div><div class="setting-item"><label>Proyecto</label><span style="color:var(--text-muted)">Portón Automático ITIBB 2026</span></div></div></div></div>
+    <div id="view-configuracion" class="view">
+        <div class="top-header"><div class="header-title"><h1>⚙️ Configuración</h1><p>Sistema SmartGate</p></div></div>
+        <div class="settings-panel">
+            <div class="settings-group">
+                <h3>🔗 MQTT</h3>
+                <div class="setting-item"><label>Broker</label><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted)">HiveMQ Cloud</span></div>
+                <div class="setting-item"><label>Estado</label><span id="mqttEstadoConf">—</span></div>
+                <div class="setting-item"><label>ESP32</label><span id="esp32EstadoConf">—</span></div>
+            </div>
+            <div class="settings-group">
+                <h3>⏰ Horario</h3>
+                <div class="setting-item"><label>Días activos</label><span style="color:var(--text-secondary)">Lunes – Viernes</span></div>
+                <div class="setting-item"><label>Horario</label><span style="font-family:'JetBrains Mono',monospace;color:var(--accent)">07:30 – 14:00</span></div>
+                <div class="setting-item"><label>Estado actual</label><span id="horarioEstadoConf">—</span></div>
+            </div>
+            <div class="settings-group">
+                <h3>🏠 Control local</h3>
+                <p style="margin-bottom:10px">Acceso directo al ESP32:</p>
+                <div class="setting-item"><label>IP local</label><a href="http://192.168.1.200" target="_blank" style="font-family:'JetBrains Mono',monospace;color:var(--accent);text-decoration:none">192.168.1.200</a></div>
+            </div>
+            <div class="settings-group">
+                <h3>🔗 Páginas del sistema</h3>
+                <div class="setting-item">
+                    <label>Monitor &amp; Mantenimiento</label>
+                    <button class="btn-admin" style="padding:6px 14px;font-size:11px;width:auto" onclick="irASecundaria()">Ir →</button>
+                </div>
+            </div>
+            <div class="settings-group">
+                <h3>ℹ️ Sistema</h3>
+                <div class="setting-item"><label>Firmware</label><span style="font-family:'JetBrains Mono',monospace;color:var(--text-muted)">v14.1</span></div>
+                <div class="setting-item"><label>Proyecto</label><span style="color:var(--text-muted)">Portón Automático ITIBB 2026</span></div>
+            </div>
+        </div>
+    </div>
+
 </main>
 </div>
 
@@ -101,9 +275,23 @@
         <div class="emergencia-icon">🛑</div>
         <h1>PARADA DE EMERGENCIA</h1>
         <div class="emergencia-tipo" id="emergenciaTipo">ACTIVADA</div>
-        <div class="emergencia-info"><p>📌 El motor está detenido.</p><p>📌 El portón está bloqueado.</p><p>📌 Emergencia física: desactive el botón del tablero.</p></div>
-        <div id="btnRecargarEmergencia"><p style="font-size:13px;opacity:0.8;margin-bottom:12px">La pantalla se actualizará automáticamente al desactivarse.</p><button class="btn-emergencia" onclick="location.reload()">🔄 Recargar ahora</button></div>
-        <div id="emergenciaContrasena" style="display:none"><p style="font-size:13px;opacity:0.8;margin-bottom:16px">Ingrese la contraseña para desactivar:</p><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><input type="password" class="input-contrasena" id="contrasenaEmergencia" placeholder="Contraseña"><button class="btn-emergencia" onclick="desactivarEmergenciaRemotaUI()">✅ Desactivar</button></div><div id="errorContrasena" style="margin-top:10px;font-size:13px;color:#fca5a5;min-height:20px"></div></div>
+        <div class="emergencia-info">
+            <p>📌 El motor está detenido.</p>
+            <p>📌 El portón está bloqueado.</p>
+            <p>📌 Emergencia física: desactive el botón del tablero.</p>
+        </div>
+        <div id="btnRecargarEmergencia">
+            <p style="font-size:13px;opacity:0.8;margin-bottom:12px">La pantalla se actualizará automáticamente al desactivarse.</p>
+            <button class="btn-emergencia" onclick="location.reload()">🔄 Recargar ahora</button>
+        </div>
+        <div id="emergenciaContrasena" style="display:none">
+            <p style="font-size:13px;opacity:0.8;margin-bottom:16px">Ingrese la contraseña para desactivar:</p>
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+                <input type="password" class="input-contrasena" id="contrasenaEmergencia" placeholder="Contraseña">
+                <button class="btn-emergencia" onclick="desactivarEmergenciaRemotaUI()">✅ Desactivar</button>
+            </div>
+            <div id="errorContrasena" style="margin-top:10px;font-size:13px;color:#fca5a5;min-height:20px"></div>
+        </div>
     </div>
 </div>
 
@@ -115,7 +303,7 @@
 
 <script>
 // ============================================================
-// FUNCIÓN DESACTIVAR EMERGENCIA REMOTA (SIN DOS PUNTOS)
+// FUNCIÓN DESACTIVAR EMERGENCIA REMOTA
 // ============================================================
 function desactivarEmergenciaRemotaUI() {
     const campo = document.getElementById('contrasenaEmergencia');
@@ -133,7 +321,7 @@ function desactivarEmergenciaRemotaUI() {
     }
 
     if (typeof enviarComando === 'function') {
-        enviarComando('DESACTIVAR_EMERGENCIA_REMOTA' + contrasena);  // ✅ SIN :
+        enviarComando('DESACTIVAR_EMERGENCIA_REMOTA' + contrasena);
         if (error) error.textContent = '⏳ Verificando en el ESP32...';
     } else {
         if (error) error.textContent = '❌ No hay conexión MQTT';
@@ -150,26 +338,7 @@ function desactivarEmergenciaRemotaUI() {
 window.desactivarEmergenciaRemotaUI = desactivarEmergenciaRemotaUI;
 
 // ============================================================
-// VERIFICAR EMERGENCIA AL CARGAR LA PÁGINA
-// ============================================================
-function verificarEmergenciaInicial() {
-    if (typeof mqttConectado !== 'undefined' && mqttConectado) {
-        enviarComando('ESTADO');
-        setTimeout(() => {
-            const emergencyBadge = document.getElementById('emergenciaBadge');
-            if (emergencyBadge && emergencyBadge.textContent.includes('EMERGENCIA')) {
-                console.log("🛑 Emergencia detectada al cargar, mostrando overlay");
-                if (typeof window.mostrarOverlayEmergencia === 'function') {
-                    const esRemota = emergencyBadge.textContent.includes('REMOTA');
-                    window.mostrarOverlayEmergencia(esRemota);
-                }
-            }
-        }, 1000);
-    }
-}
-
-// ============================================================
-// MANEJADOR ESPECÍFICO PARA TOPIC DE EMERGENCIA
+// 🆕 MANEJADOR ESPECÍFICO PARA TOPIC DE EMERGENCIA
 // ============================================================
 function manejarEmergenciaTopic(mensaje) {
     console.log("🛑 EMERGENCIA recibida:", mensaje);
@@ -177,12 +346,12 @@ function manejarEmergenciaTopic(mensaje) {
     if (mensaje === "ACTIVA_FISICA") {
         console.log("🔴 Emergencia FÍSICA activada");
         if (typeof window.mostrarOverlayEmergencia === 'function') {
-            window.mostrarOverlayEmergencia(false);
+            window.mostrarOverlayEmergencia(false);  // false = emergencia física
         }
     } else if (mensaje === "ACTIVA_REMOTA") {
         console.log("🔴 Emergencia REMOTA activada");
         if (typeof window.mostrarOverlayEmergencia === 'function') {
-            window.mostrarOverlayEmergencia(true);
+            window.mostrarOverlayEmergencia(true);   // true = emergencia remota
         }
     } else if (mensaje === "DESACTIVADA") {
         console.log("🟢 Emergencia desactivada");
@@ -193,16 +362,18 @@ function manejarEmergenciaTopic(mensaje) {
 }
 
 // ============================================================
-// INTERCEPTOR PRINCIPAL
+// INTERCEPTOR PRINCIPAL (MANTIENE FUNCIONES EXISTENTES)
 // ============================================================
 function interceptorPrincipal(topic, message) {
     let mensajeStr = typeof message === 'string' ? message : message.toString();
     
+    // 🆕 Prioridad al topic específico de emergencia
     if (topic === 'porton/emergencia') {
         manejarEmergenciaTopic(mensajeStr);
         return;
     }
     
+    // Mantener el resto de la lógica existente
     if (topic === 'porton/estado') {
         try {
             const data = JSON.parse(mensajeStr);
@@ -221,6 +392,9 @@ function interceptorPrincipal(topic, message) {
     }
 }
 
+// ============================================================
+// CONECTAR INTERCEPTOR AL CLIENTE MQTT
+// ============================================================
 function conectarInterceptor() {
     if (typeof client !== 'undefined' && client !== null && typeof client.on === 'function') {
         console.log("✅ Conectando interceptor a cliente MQTT");
@@ -237,7 +411,6 @@ let intervaloInterceptor = setInterval(() => {
     if (conectarInterceptor()) {
         clearInterval(intervaloInterceptor);
         console.log("✅ Interceptor activo después de", intentosInterceptor, "intentos");
-        verificarEmergenciaInicial();
     } else if (intentosInterceptor > 30) {
         clearInterval(intervaloInterceptor);
         console.error("❌ No se pudo conectar el interceptor MQTT");
@@ -275,25 +448,41 @@ function verificarHorarioSeguridad() {
     if (hora >= 20) {
         if (permisoActivoLocal) {
             desactivarPermisoLocal();
-            if (typeof mostrarMensaje === 'function') mostrarMensaje("🔒 Permiso especial desactivado (horario de seguridad 20:00)");
+            if (typeof mostrarMensaje === 'function') {
+                mostrarMensaje("🔒 Permiso especial desactivado (horario de seguridad 20:00)");
+            }
         }
         const btnPermiso = document.getElementById('btnPermiso');
-        if (btnPermiso) { btnPermiso.disabled = true; btnPermiso.title = "Permiso no disponible después de las 20:00"; }
+        if (btnPermiso) {
+            btnPermiso.disabled = true;
+            btnPermiso.title = "Permiso no disponible después de las 20:00";
+        }
         return false;
     } else {
         const btnPermiso = document.getElementById('btnPermiso');
-        if (btnPermiso) { btnPermiso.disabled = false; btnPermiso.title = "Activar permiso especial (5-120 min)"; }
+        if (btnPermiso) {
+            btnPermiso.disabled = false;
+            btnPermiso.title = "Activar permiso especial (5-120 min)";
+        }
         return true;
     }
 }
 
 function desactivarPermisoLocal() {
-    if (temporizadorPermiso) { clearTimeout(temporizadorPermiso); temporizadorPermiso = null; }
+    if (temporizadorPermiso) {
+        clearTimeout(temporizadorPermiso);
+        temporizadorPermiso = null;
+    }
     permisoActivoLocal = false;
+    
     const permisoEstado = document.getElementById('permisoEstado');
-    if (permisoEstado) { permisoEstado.textContent = ''; permisoEstado.className = 'permiso-estado'; }
+    if (permisoEstado) {
+        permisoEstado.textContent = '';
+        permisoEstado.className = 'permiso-estado';
+    }
     const countdownDiv = document.getElementById('permisoCountdown');
     if (countdownDiv) countdownDiv.style.display = 'none';
+    
     const enHorario = typeof verificarAccesoActivo === 'function' ? verificarAccesoActivo() : true;
     const btnAbrir = document.getElementById('btnAbrir');
     const btnCerrar = document.getElementById('btnCerrar');
@@ -305,20 +494,29 @@ function desactivarPermisoLocal() {
 
 function iniciarCountdownSeguridad(minutos) {
     if (temporizadorPermiso) clearTimeout(temporizadorPermiso);
+    
     permisoActivoLocal = true;
     const duracionMs = minutos * 60 * 1000;
+    
     temporizadorPermiso = setTimeout(() => {
         if (permisoActivoLocal) {
             desactivarPermisoLocal();
-            if (typeof mostrarMensaje === 'function') mostrarMensaje('🔒 Permiso especial expirado');
+            if (typeof mostrarMensaje === 'function') {
+                mostrarMensaje('🔒 Permiso especial expirado');
+            }
         }
     }, duracionMs);
+    
     const countdownDiv = document.getElementById('permisoCountdown');
     const countdownTxt = document.getElementById('countdownTexto');
     if (countdownDiv) countdownDiv.style.display = 'flex';
+    
     const fin = Date.now() + duracionMs;
     const interval = setInterval(() => {
-        if (!permisoActivoLocal) { clearInterval(interval); return; }
+        if (!permisoActivoLocal) {
+            clearInterval(interval);
+            return;
+        }
         const restante = Math.max(0, fin - Date.now());
         const min = Math.floor(restante / 60000).toString().padStart(2, '0');
         const seg = Math.floor((restante % 60000) / 1000).toString().padStart(2, '0');
@@ -329,20 +527,32 @@ function iniciarCountdownSeguridad(minutos) {
 
 function activarPermisoConTiempo() {
     if (!verificarHorarioSeguridad()) {
-        if (typeof mostrarMensaje === 'function') mostrarMensaje("⚠️ No se puede activar permiso después de las 20:00");
+        if (typeof mostrarMensaje === 'function') {
+            mostrarMensaje("⚠️ No se puede activar permiso después de las 20:00");
+        }
         return;
     }
+    
     const input = document.getElementById('permisoMinutos');
     let minutos = parseInt(input ? input.value : 60);
     if (isNaN(minutos) || minutos < 5) minutos = 5;
     if (minutos > 120) minutos = 120;
     if (input) input.value = minutos;
-    if (typeof enviarComando === 'function') enviarComando('ACTIVAR_PERMISO:' + minutos);
+    
+    if (typeof enviarComando === 'function') {
+        enviarComando('ACTIVAR_PERMISO:' + minutos);
+    }
+    
     iniciarCountdownSeguridad(minutos);
-    if (typeof mostrarMensaje === 'function') mostrarMensaje('🔑 Permiso especial activado por ' + minutos + ' min');
+    
+    if (typeof mostrarMensaje === 'function') {
+        mostrarMensaje('🔑 Permiso especial activado por ' + minutos + ' min');
+    }
 }
 
-setInterval(() => { verificarHorarioSeguridad(); }, 60000);
+setInterval(() => {
+    verificarHorarioSeguridad();
+}, 60000);
 
 function actualizarSensoresDesdeEstado(data) {
     const campos = {
@@ -363,7 +573,9 @@ if (typeof window.originalUpdateConfiguracion === 'undefined') {
 }
 
 window.updateConfiguracion = function(data) {
-    if (window.originalUpdateConfiguracion) window.originalUpdateConfiguracion(data);
+    if (window.originalUpdateConfiguracion) {
+        window.originalUpdateConfiguracion(data);
+    }
     actualizarSensoresDesdeEstado(data);
 };
 
@@ -415,7 +627,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const esp32Btn = document.getElementById('esp32Btn');
     if (esp32Btn) {
         esp32Btn.onclick = () => {
-            const msg = (typeof ultimoHeartbeat !== 'undefined' && ultimoHeartbeat && Date.now() - ultimoHeartbeat < 35000) ? '📡 ESP32 online' : '⚠️ ESP32 sin respuesta';
+            const msg = (typeof ultimoHeartbeat !== 'undefined' && ultimoHeartbeat && Date.now() - ultimoHeartbeat < 35000) 
+                ? '📡 ESP32 online' 
+                : '⚠️ ESP32 sin respuesta';
             if (typeof mostrarMensaje === 'function') mostrarMensaje(msg);
         };
     }
