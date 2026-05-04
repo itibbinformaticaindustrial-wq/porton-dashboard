@@ -270,7 +270,7 @@
 </div>
 
 <!-- Overlay emergencia -->
-<div class="emergencia-overlay" id="emergenciaOverlay" style="display:none">
+<div class="emergencia-overlay" id="emergenciaOverlay">
     <div class="emergencia-card">
         <div class="emergencia-icon">🛑</div>
         <h1>PARADA DE EMERGENCIA</h1>
@@ -394,17 +394,11 @@ function updateSensoresDesdeEstado(data) {
     });
 }
 
+// Envolver updateConfiguracion para incluir vista sensores
 const _updateConfOrig = updateConfiguracion;
 function updateConfiguracion(data) {
     _updateConfOrig(data);
     updateSensoresDesdeEstado(data);
-    // Actualizar banner horario desde datos MQTT
-    const banner = document.getElementById('horarioBanner');
-    if (banner) {
-        const activo = !!data.permisoEspecial || verificarAccesoActivo();
-        banner.textContent = activo ? '✅ Horario activo — Acceso habilitado' : '⏰ Fuera del horario de acceso';
-        banner.className = 'horario-banner ' + (activo ? 'horario-activo' : 'horario-inactivo');
-    }
 }
 
 function actualizarConf() {
