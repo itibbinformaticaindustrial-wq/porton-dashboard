@@ -224,8 +224,8 @@
         <div class="history-table-container">
             <table class="history-table">
                 <thead><tr><th>Fecha y Hora</th><th>Evento</th><th>Detalle</th></tr></thead>
-                <tbody id="historyBody"><tr><td colspan="3" style="text-align:center;opacity:0.5">Sin eventos</td></tr></tbody>
-            </table>
+                <tbody id="historyBody"><tr><td colspan="3" style="text-align:center;opacity:0.5">Sin eventos vs. JAJAJAJAJAJA</td></tr></tbody>
+            </tr>
         </div>
         <div style="margin-top:16px"><button class="btn-danger" onclick="clearEventsWithPassword()">🗑️ Limpiar historial</button></div>
     </div>
@@ -337,6 +337,79 @@ function desactivarEmergenciaRemotaUI() {
 
 // Exponer globalmente
 window.desactivarEmergenciaRemotaUI = desactivarEmergenciaRemotaUI;
+
+// ============================================================
+// INTERCEPTOR DE EMERGENCIA - SOLUCIÓN DEFINITIVA
+// ============================================================
+
+// Esta función se ejecutará CADA VEZ que llegue un mensaje MQTT
+function interceptorEmergencia(topic, message) {
+    if (topic === 'porton/estado') {
+        try {
+            const data = JSON.parse(message.toString());
+            console.log("🔍 INTERCEPTOR - emergenciaActiva:", data.emergenciaActiva);
+            console.log("🔍 INTERCEPTOR - emergenciaRemotaActiva:", data.emergenciaRemotaActiva);
+            
+            if (data.emergenciaActiva === true) {
+                console.log("🛑 ¡INTERCEPTOR ACTIVÓ EMERGENCIA!");
+                
+                // Forzar overlay directamente
+                const overlay = document.getElementById('emergenciaOverlay');
+                const divClave = document.getElementById('emergenciaContrasena');
+                const btnRecargar = document.getElementById('btnRecargarEmergencia');
+                const infoTipo = document.getElementById('emergenciaTipo');
+                
+                if (overlay) {
+                    overlay.classList.add('visible');
+                    if (data.emergenciaRemotaActiva === true) {
+                        if (divClave) divClave.style.display = 'block';
+                        if (btnRecargar) btnRecargar.style.display = 'none';
+                        if (infoTipo) infoTipo.textContent = 'PARADA REMOTA ACTIVADA';
+                    } else {
+                        if (divClave) divClave.style.display = 'none';
+                        if (btnRecargar) btnRecargar.style.display = 'block';
+                        if (infoTipo) infoTipo.textContent = 'PARADA FÍSICA ACTIVADA';
+                    }
+                }
+            } else if (data.emergenciaActiva === false) {
+                const overlay = document.getElementById('emergenciaOverlay');
+                if (overlay && overlay.classList.contains('visible')) {
+                    overlay.classList.remove('visible');
+                    console.log("✅ Emergencia desactivada por MQTT");
+                }
+            }
+        } catch(e) {
+            console.error("Error en interceptor:", e);
+        }
+    }
+}
+
+// Conectar el interceptor al cliente MQTT
+let intervaloInterceptor = setInterval(() => {
+    if (typeof client !== 'undefined' && client !== null && typeof client.on === 'function') {
+        console.log("✅ Interceptor conectado a cliente MQTT");
+        client.on('message', interceptorEmergencia);
+        clearInterval(intervaloInterceptor);
+    }
+}, 500);
+
+// Función para probar emergencia manualmente desde consola
+window.probarEmergenciaManual = function() {
+    console.log("🧪 Probando emergencia manual");
+    const overlay = document.getElementById('emergenciaOverlay');
+    if (overlay) {
+        overlay.classList.add('visible');
+        const divClave = document.getElementById('emergenciaContrasena');
+        const infoTipo = document.getElementById('emergenciaTipo');
+        if (divClave) divClave.style.display = 'block';
+        if (infoTipo) infoTipo.textContent = 'PARADA REMOTA ACTIVADA (PRUEBA)';
+    }
+};
+
+window.ocultarEmergenciaManual = function() {
+    const overlay = document.getElementById('emergenciaOverlay');
+    if (overlay) overlay.classList.remove('visible');
+};
 
 // ============================================================
 // SCRIPT PRINCIPAL CORREGIDO - CON CONTROL DE PERMISO HASTA 20:00
