@@ -1,7 +1,8 @@
 // ============================================================
-// emergencia.js - Lógica del overlay de emergencia
+// emergencia.js - Overlay de emergencia
 // ITIBB - Informática Industrial
 // ============================================================
+
 let emergenciaActivaLocal = false;
 
 function mostrarEmergencia(mostrar) {
@@ -9,7 +10,8 @@ function mostrarEmergencia(mostrar) {
     if (!overlay) return;
 
     if (mostrar) {
-        if (emergenciaActivaLocal) return;
+        // ✅ CORRECCIÓN: sin guarda — siempre actualizamos el tipo
+        // por si cambió de física a remota o viceversa
         overlay.style.display = 'flex';
         emergenciaActivaLocal = true;
 
@@ -18,21 +20,24 @@ function mostrarEmergencia(mostrar) {
         const infoTipo    = document.getElementById('emergenciaTipo');
 
         if (emergenciaRemotaLocal) {
+            // Emergencia REMOTA → formulario de contraseña
             if (divClave)    divClave.style.display    = 'block';
             if (btnRecargar) btnRecargar.style.display = 'none';
             if (infoTipo)    infoTipo.textContent      = 'PARADA REMOTA ACTIVADA';
         } else {
+            // Emergencia FÍSICA → solo informar
             if (divClave)    divClave.style.display    = 'none';
             if (btnRecargar) btnRecargar.style.display = 'block';
             if (infoTipo)    infoTipo.textContent      = 'PARADA FÍSICA ACTIVADA';
         }
+
     } else {
-        if (!emergenciaActivaLocal) return;
+        // Ocultar — ESP32 confirmó que la emergencia terminó
         overlay.style.display = 'none';
         emergenciaActivaLocal = false;
         const campo = document.getElementById('contrasenaEmergencia');
         const error = document.getElementById('errorContrasena');
-        if (campo) campo.value = '';
+        if (campo) campo.value       = '';
         if (error) error.textContent = '';
     }
 }
@@ -41,15 +46,20 @@ function desactivarEmergenciaRemotaUI() {
     const campo = document.getElementById('contrasenaEmergencia');
     const error = document.getElementById('errorContrasena');
     if (!campo) return;
+
     const contrasena = campo.value.trim();
     if (!contrasena) {
         if (error) error.textContent = '⚠️ Ingrese la contraseña';
         return;
     }
+
     if (typeof enviarComando === 'function') {
-        enviarComando(`DESACTIVAR_EMERGENCIA_REMOTA:${contrasena}`);
+        enviarComando('DESACTIVAR_EMERGENCIA_REMOTA:' + contrasena);
     }
+
     if (error) error.textContent = '⏳ Verificando en el ESP32...';
+
+    // Si en 4s el ESP32 no envía emergenciaActiva:false → contraseña incorrecta
     setTimeout(() => {
         if (emergenciaActivaLocal) {
             if (error) error.textContent = '❌ Contraseña incorrecta';
