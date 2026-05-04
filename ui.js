@@ -17,35 +17,43 @@ let panelAbierto         = true;
 // ============================================================
 function updatePortonUI(estado) {
     const estadoDiv = document.getElementById('estadoPorton');
-    const puerta    = document.getElementById('puerta');
+    const panel     = document.getElementById('puerta');       // .gate-panel
+    const label     = document.getElementById('gateLabelInner');
     const btnAbrir  = document.getElementById('btnAbrir');
     const btnCerrar = document.getElementById('btnCerrar');
 
-    if (!estadoDiv || !puerta) return;
+    if (!estadoDiv) return;
 
     if (estado === "ABIERTO") {
-        estadoDiv.textContent  = '🔓 PORTÓN ABIERTO';
-        estadoDiv.className    = 'gate-status abierto';
-        puerta.style.left      = 'calc(100% - 90px)';
-        puerta.title           = 'Abierto';
+        estadoDiv.textContent = '🔓 PORTÓN ABIERTO';
+        estadoDiv.className   = 'gate-status abierto';
+        if (panel) panel.className = 'gate-panel abierto';
+        if (label) {
+            label.textContent = 'ABIERTO';
+            label.style.color = 'rgba(74,222,128,0.9)';
+        }
     } else if (estado === "CERRADO") {
-        estadoDiv.textContent  = '🔒 PORTÓN CERRADO';
-        estadoDiv.className    = 'gate-status cerrado';
-        puerta.style.left      = '12px';
-        puerta.title           = 'Cerrado';
+        estadoDiv.textContent = '🔒 PORTÓN CERRADO';
+        estadoDiv.className   = 'gate-status cerrado';
+        if (panel) panel.className = 'gate-panel';
+        if (label) {
+            label.textContent = 'CERRADO';
+            label.style.color = 'rgba(248,113,113,0.8)';
+        }
     } else {
-        estadoDiv.textContent  = '⚠️ PORTÓN ENTREABIERTO';
-        estadoDiv.className    = 'gate-status intermedio';
-        puerta.style.left      = 'calc(50% - 45px)';
-        puerta.title           = 'Posición intermedia';
+        estadoDiv.textContent = '⚠️ PORTÓN ENTREABIERTO';
+        estadoDiv.className   = 'gate-status intermedio';
+        if (panel) panel.className = 'gate-panel intermedio';
+        if (label) {
+            label.textContent = 'INTERMEDIO';
+            label.style.color = 'rgba(251,191,36,0.9)';
+        }
     }
 
     // Bloquear botones si fuera de horario y sin permiso
     const permitido = verificarAccesoActivo();
-    if (btnAbrir)  btnAbrir.disabled  = !permitido;
-    if (btnCerrar) btnCerrar.disabled = !permitido;
-    if (btnAbrir)  btnAbrir.classList.toggle('btn-bloqueado', !permitido);
-    if (btnCerrar) btnCerrar.classList.toggle('btn-bloqueado', !permitido);
+    if (btnAbrir)  { btnAbrir.disabled  = !permitido; btnAbrir.classList.toggle('btn-bloqueado',  !permitido); }
+    if (btnCerrar) { btnCerrar.disabled = !permitido; btnCerrar.classList.toggle('btn-bloqueado', !permitido); }
 }
 
 // ============================================================
@@ -408,3 +416,4 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 console.log("✅ ui.js SmartGate cargado");
+        
