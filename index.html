@@ -225,7 +225,7 @@
             <table class="history-table">
                 <thead><tr><th>Fecha y Hora</th><th>Evento</th><th>Detalle</th></tr></thead>
                 <tbody id="historyBody"><tr><td colspan="3" style="text-align:center;opacity:0.5">Sin eventos vs. JAJAJAJAJAJA</td></tr></tbody>
-            </tr>
+            </table>
         </div>
         <div style="margin-top:16px"><button class="btn-danger" onclick="clearEventsWithPassword()">🗑️ Limpiar historial</button></div>
     </div>
@@ -339,21 +339,34 @@ function desactivarEmergenciaRemotaUI() {
 window.desactivarEmergenciaRemotaUI = desactivarEmergenciaRemotaUI;
 
 // ============================================================
-// INTERCEPTOR DE EMERGENCIA - SOLUCIÓN DEFINITIVA
+// INTERCEPTOR DE EMERGENCIA - VERSIÓN CORREGIDA
 // ============================================================
 
-// Esta función se ejecutará CADA VEZ que llegue un mensaje MQTT
 function interceptorEmergencia(topic, message) {
+    console.log("📨 INTERCEPTOR - Topic:", topic);
+    
     if (topic === 'porton/estado') {
         try {
-            const data = JSON.parse(message.toString());
-            console.log("🔍 INTERCEPTOR - emergenciaActiva:", data.emergenciaActiva);
-            console.log("🔍 INTERCEPTOR - emergenciaRemotaActiva:", data.emergenciaRemotaActiva);
+            // Obtener el mensaje como string
+            let mensajeStr;
+            if (typeof message === 'string') {
+                mensajeStr = message;
+            } else if (message.toString) {
+                mensajeStr = message.toString();
+            } else {
+                mensajeStr = String(message);
+            }
+            
+            console.log("📨 INTERCEPTOR - Mensaje RAW:", mensajeStr);
+            
+            // Parsear JSON
+            const data = JSON.parse(mensajeStr);
+            console.log("📊 INTERCEPTOR - Datos parseados:", data);
+            console.log("📊 emergenciaActiva:", data.emergenciaActiva);
+            console.log("📊 emergenciaRemotaActiva:", data.emergenciaRemotaActiva);
             
             if (data.emergenciaActiva === true) {
-                console.log("🛑 ¡INTERCEPTOR ACTIVÓ EMERGENCIA!");
-                
-                // Forzar overlay directamente
+                console.log("🛑 ¡EMERGENCIA DETECTADA! Mostrando overlay...");
                 const overlay = document.getElementById('emergenciaOverlay');
                 const divClave = document.getElementById('emergenciaContrasena');
                 const btnRecargar = document.getElementById('btnRecargarEmergencia');
@@ -379,17 +392,37 @@ function interceptorEmergencia(topic, message) {
                 }
             }
         } catch(e) {
-            console.error("Error en interceptor:", e);
+            console.error("❌ Error parseando mensaje:", e);
+            console.log("📨 Mensaje original:", message);
         }
     }
 }
 
 // Conectar el interceptor al cliente MQTT
-let intervaloInterceptor = setInterval(() => {
+function conectarInterceptor() {
     if (typeof client !== 'undefined' && client !== null && typeof client.on === 'function') {
-        console.log("✅ Interceptor conectado a cliente MQTT");
+        console.log("✅ Conectando interceptor a cliente MQTT");
+        // Guardar el manejador original si existe
+        if (client._originalMessageHandler) {
+            client.removeListener('message', client._originalMessageHandler);
+        }
         client.on('message', interceptorEmergencia);
+        console.log("✅ Interceptor conectado");
+        return true;
+    }
+    return false;
+}
+
+// Intentar conectar cada 500ms
+let intentosInterceptor = 0;
+let intervaloInterceptor = setInterval(() => {
+    intentosInterceptor++;
+    if (conectarInterceptor()) {
         clearInterval(intervaloInterceptor);
+        console.log("✅ Interceptor activo después de", intentosInterceptor, "intentos");
+    } else if (intentosInterceptor > 20) {
+        clearInterval(intervaloInterceptor);
+        console.error("❌ No se pudo conectar el interceptor");
     }
 }, 500);
 
