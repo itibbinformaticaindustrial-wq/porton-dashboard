@@ -57,24 +57,22 @@ function updatePortonUI(estado) {
 }
 
 // ============================================================
-// CONFIGURACIÓN / TOGGLES / BADGES
+// CONFIGURACIÓN / TOGGLES / BADGES (CORREGIDO)
 // ============================================================
 function updateConfiguracion(data) {
-    // ✅ Nombres de campos exactos que publica el ESP32 en mqtt.h:
-    // fotoHabilitado, modoAuto, botonFisicoHabilitado, pirHabilitado,
-    // modoHorario, chapaActiva, emergenciaActiva, permisoEspecial
-
     const enHorario = verificarAccesoActivo();
 
-    // Toggles — sincronizar estado real del ESP32
-    setToggle('toggleFoto',    data.fotoHabilitado);
-    setToggle('toggleAuto',    data.modoAuto);
-    setToggle('toggleBoton',   data.botonFisicoHabilitado);
-    setToggle('togglePIR',     data.pirHabilitado);
-    setToggle('toggleHorario', data.modoHorario);
+    // Sincronizar toggles con estado real del ESP32 (usando === true)
+    setToggle('toggleFoto',    data.fotoHabilitado === true);
+    setToggle('toggleAuto',    data.modoAuto === true);
+    setToggle('toggleBoton',   data.botonFisicoHabilitado === true);
+    setToggle('togglePIR',     data.pirHabilitado === true);
+    setToggle('toggleHorario', data.modoHorario === true);
+
+    // Registrar en consola para depuración
+    console.log("🔄 Toggles actualizados - Foto:", data.fotoHabilitado, "Auto:", data.modoAuto, "Botón:", data.botonFisicoHabilitado, "PIR:", data.pirHabilitado, "Horario:", data.modoHorario);
 
     // Bloquear toggles visualmente si fuera de horario
-    // (el permiso especial los desbloquea)
     ['toggleFoto','toggleAuto','toggleBoton','togglePIR'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -89,16 +87,16 @@ function updateConfiguracion(data) {
     if (th) th.classList.remove('disabled');
 
     // Badges
-    setBadge('chapaBadge',  data.chapaActiva            ? '🔐 Chapa: ON'   : '🔐 Chapa: OFF',  data.chapaActiva            ? 'badge-on' : '');
-    setBadge('botonBadge',  data.botonFisicoHabilitado   ? '🎮 Botón: ON'  : '🎮 Botón: OFF',  data.botonFisicoHabilitado  ? 'badge-on' : '');
-    setBadge('pirBadge',    data.pirHabilitado           ? '🚶 PIR: ON'    : '🚶 PIR: OFF',    data.pirHabilitado          ? 'badge-on' : '');
-    setBadge('horarioBadge',data.modoHorario             ? '⏰ Horario: ON': '⏰ Horario: FUERA',data.modoHorario           ? 'badge-on' : '');
+    setBadge('chapaBadge',  data.chapaActiva === true ? '🔐 Chapa: ON' : '🔐 Chapa: OFF',  data.chapaActiva === true ? 'badge-on' : '');
+    setBadge('botonBadge',  data.botonFisicoHabilitado === true ? '🎮 Botón: ON' : '🎮 Botón: OFF',  data.botonFisicoHabilitado === true ? 'badge-on' : '');
+    setBadge('pirBadge',    data.pirHabilitado === true ? '🚶 PIR: ON' : '🚶 PIR: OFF',    data.pirHabilitado === true ? 'badge-on' : '');
+    setBadge('horarioBadge',data.modoHorario === true ? '⏰ Horario: ON' : '⏰ Horario: OFF', data.modoHorario === true ? 'badge-on' : '');
 
     // Badge emergencia
     const eBadge = document.getElementById('emergenciaBadge');
     if (eBadge) {
-        if (data.emergenciaActiva) {
-            eBadge.textContent = '🛑 EMERGENCIA';
+        if (data.emergenciaActiva === true) {
+            eBadge.textContent = '🛑 EMERGENCIA ACTIVA';
             eBadge.className   = 'badge badge-emergencia activa';
         } else {
             eBadge.textContent = '✅ Sin emergencia';
@@ -106,8 +104,24 @@ function updateConfiguracion(data) {
         }
     }
 
+    // Mostrar/ocultar overlay de emergencia
+    if (data.emergenciaActiva === true) {
+        console.log("🛑 Emergencia activa en updateConfiguracion");
+        if (typeof window.mostrarOverlayEmergencia === 'function') {
+            window.mostrarOverlayEmergencia(data.emergenciaRemotaActiva === true);
+        } else if (typeof mostrarEmergencia === 'function') {
+            mostrarEmergencia(true);
+        }
+    } else {
+        if (typeof window.ocultarOverlayEmergencia === 'function') {
+            window.ocultarOverlayEmergencia();
+        } else if (typeof mostrarEmergencia === 'function') {
+            mostrarEmergencia(false);
+        }
+    }
+
     // Permiso especial
-    permisoEspecialLocal = !!data.permisoEspecial;
+    permisoEspecialLocal = data.permisoEspecial === true;
     const permisoDiv = document.getElementById('permisoEstado');
     if (permisoDiv) {
         permisoDiv.textContent = permisoEspecialLocal ? '🔑 Permiso especial activo' : '';
@@ -150,7 +164,7 @@ function setBadge(id, texto, claseExtra = '') {
 }
 
 // ============================================================
-// SENSORES FINALES DE CARRERA
+// SENSORES FINALES DE CARRERA (CORREGIDO)
 // ============================================================
 function updateSensores(data) {
     const cardAbierto  = document.getElementById('sensorAbiertoBox');
@@ -158,10 +172,10 @@ function updateSensores(data) {
     const valAbierto   = document.getElementById('sensorAbiertoVal');
     const valCerrado   = document.getElementById('sensorCerradoVal');
 
-    if (valAbierto) valAbierto.textContent  = data.abierto  ? '🟢 Activo' : '⚪ Inactivo';
-    if (valCerrado) valCerrado.textContent  = data.cerrado  ? '🟢 Activo' : '⚪ Inactivo';
-    if (cardAbierto) cardAbierto.classList.toggle('activo', !!data.abierto);
-    if (cardCerrado) cardCerrado.classList.toggle('activo', !!data.cerrado);
+    if (valAbierto) valAbierto.textContent  = data.abierto === true ? '🟢 Activo' : '⚪ Inactivo';
+    if (valCerrado) valCerrado.textContent  = data.cerrado === true ? '🟢 Activo' : '⚪ Inactivo';
+    if (cardAbierto) cardAbierto.classList.toggle('activo', data.abierto === true);
+    if (cardCerrado) cardCerrado.classList.toggle('activo', data.cerrado === true);
 }
 
 // ============================================================
@@ -237,10 +251,6 @@ function iniciarReloj() {
 
 // ⚠️ FUNCIÓN DESHABILITADA - El ESP32 ya tiene su propia hora (NTP)
 function enviarHoraAlESP32(ahora = new Date()) {
-    // Esta función ya no es necesaria porque:
-    // 1. La página está en HTTPS y el ESP32 en HTTP (bloqueado por Mixed Content)
-    // 2. El ESP32 ya puede obtener la hora por NTP (Internet)
-    // 3. Si se necesita sincronización, se puede hacer por MQTT
     return;
 }
 
@@ -319,13 +329,55 @@ function abrirTemporalAdmin() {
 }
 
 // ============================================================
-// EMERGENCIA REMOTA
+// EMERGENCIA REMOTA (CORREGIDO)
 // ============================================================
 function activarEmergenciaRemotaUI() {
     if (!confirm("⚠️ ¿Activar parada de emergencia remota?\nEsto detendrá el motor y bloqueará el portón.")) return;
     enviarComando("ACTIVAR_EMERGENCIA_REMOTA");
     mostrarMensaje("🛑 Activando emergencia remota...");
 }
+
+// ============================================================
+// MANEJO DE EMERGENCIA DESDE MQTT (NUEVAS FUNCIONES)
+// ============================================================
+function mostrarOverlayEmergencia(esRemota) {
+    console.log("🛑 Mostrando overlay de emergencia, remota:", esRemota);
+    const overlay = document.getElementById('emergenciaOverlay');
+    const divClave = document.getElementById('emergenciaContrasena');
+    const btnRecargar = document.getElementById('btnRecargarEmergencia');
+    const infoTipo = document.getElementById('emergenciaTipo');
+
+    if (!overlay) {
+        console.error("❌ #emergenciaOverlay no encontrado");
+        return;
+    }
+
+    overlay.classList.add('visible');
+    window.emergenciaActivaLocal = true;
+
+    if (esRemota) {
+        if (divClave) divClave.style.display = 'block';
+        if (btnRecargar) btnRecargar.style.display = 'none';
+        if (infoTipo) infoTipo.textContent = 'PARADA REMOTA ACTIVADA';
+    } else {
+        if (divClave) divClave.style.display = 'none';
+        if (btnRecargar) btnRecargar.style.display = 'block';
+        if (infoTipo) infoTipo.textContent = 'PARADA FÍSICA ACTIVADA';
+    }
+}
+
+function ocultarOverlayEmergencia() {
+    console.log("✅ Ocultando overlay de emergencia");
+    const overlay = document.getElementById('emergenciaOverlay');
+    if (overlay) {
+        overlay.classList.remove('visible');
+    }
+    window.emergenciaActivaLocal = false;
+}
+
+// Exponer funciones globales para que mqtt-client.js pueda usarlas
+window.mostrarOverlayEmergencia = mostrarOverlayEmergencia;
+window.ocultarOverlayEmergencia = ocultarOverlayEmergencia;
 
 // ============================================================
 // HORARIO — bloqueo visual fuera de horario
