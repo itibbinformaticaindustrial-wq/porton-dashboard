@@ -2,7 +2,6 @@
 // emergencia.js - Overlay de emergencia
 // ITIBB - Informática Industrial
 // ============================================================
-
 // ✅ Protección: solo definir funciones si NO existen ya en window
 // Esto evita sobrescribir las funciones de ui.js
 
