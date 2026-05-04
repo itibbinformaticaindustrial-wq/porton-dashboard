@@ -303,7 +303,7 @@
 
 <script>
 // ============================================================
-// FUNCIÓN DESACTIVAR EMERGENCIA REMOTA (AGREGADA)
+// FUNCIÓN DESACTIVAR EMERGENCIA REMOTA
 // ============================================================
 function desactivarEmergenciaRemotaUI() {
     const campo = document.getElementById('contrasenaEmergencia');
@@ -335,40 +335,51 @@ function desactivarEmergenciaRemotaUI() {
     }, 4000);
 }
 
-// Exponer globalmente
 window.desactivarEmergenciaRemotaUI = desactivarEmergenciaRemotaUI;
 
 // ============================================================
-// INTERCEPTOR DE EMERGENCIA - VERSIÓN CORREGIDA
+// 🆕 MANEJADOR ESPECÍFICO PARA TOPIC DE EMERGENCIA
 // ============================================================
-
-function interceptorEmergencia(topic, message) {
-    console.log("📨 INTERCEPTOR - Topic:", topic);
-    console.log("📨 INTERCEPTOR - Tipo de message:", typeof message);
+function manejarEmergenciaTopic(mensaje) {
+    console.log("🛑 EMERGENCIA recibida:", mensaje);
     
+    if (mensaje === "ACTIVA_FISICA") {
+        console.log("🔴 Emergencia FÍSICA activada");
+        if (typeof window.mostrarOverlayEmergencia === 'function') {
+            window.mostrarOverlayEmergencia(false);  // false = emergencia física
+        }
+    } else if (mensaje === "ACTIVA_REMOTA") {
+        console.log("🔴 Emergencia REMOTA activada");
+        if (typeof window.mostrarOverlayEmergencia === 'function') {
+            window.mostrarOverlayEmergencia(true);   // true = emergencia remota
+        }
+    } else if (mensaje === "DESACTIVADA") {
+        console.log("🟢 Emergencia desactivada");
+        if (typeof window.ocultarOverlayEmergencia === 'function') {
+            window.ocultarOverlayEmergencia();
+        }
+    }
+}
+
+// ============================================================
+// INTERCEPTOR PRINCIPAL (MANTIENE FUNCIONES EXISTENTES)
+// ============================================================
+function interceptorPrincipal(topic, message) {
+    let mensajeStr = typeof message === 'string' ? message : message.toString();
+    
+    // 🆕 Prioridad al topic específico de emergencia
+    if (topic === 'porton/emergencia') {
+        manejarEmergenciaTopic(mensajeStr);
+        return;
+    }
+    
+    // Mantener el resto de la lógica existente
     if (topic === 'porton/estado') {
         try {
-            let mensajeStr;
-            if (typeof message === 'string') {
-                mensajeStr = message;
-            } else if (message && message.toString) {
-                mensajeStr = message.toString();
-            } else {
-                mensajeStr = String(message);
-            }
-            
-            console.log("📨 INTERCEPTOR - Mensaje RAW (primeros 100 chars):", mensajeStr.substring(0, 100));
-            
             const data = JSON.parse(mensajeStr);
-            console.log("📊 INTERCEPTOR - emergenciaActiva:", data.emergenciaActiva);
-            console.log("📊 INTERCEPTOR - emergenciaRemotaActiva:", data.emergenciaRemotaActiva);
-            
             if (data.emergenciaActiva === true) {
-                console.log("🛑 ¡EMERGENCIA DETECTADA! Mostrando overlay...");
                 if (typeof window.mostrarOverlayEmergencia === 'function') {
                     window.mostrarOverlayEmergencia(data.emergenciaRemotaActiva === true);
-                } else {
-                    console.error("❌ window.mostrarOverlayEmergencia NO está definida");
                 }
             } else if (data.emergenciaActiva === false) {
                 if (typeof window.ocultarOverlayEmergencia === 'function') {
@@ -376,23 +387,24 @@ function interceptorEmergencia(topic, message) {
                 }
             }
         } catch(e) {
-            console.error("❌ Error parseando mensaje:", e);
+            console.error("❌ Error parseando JSON:", e);
         }
     }
 }
 
-// Esperar a que el cliente MQTT esté listo y conectarse
+// ============================================================
+// CONECTAR INTERCEPTOR AL CLIENTE MQTT
+// ============================================================
 function conectarInterceptor() {
     if (typeof client !== 'undefined' && client !== null && typeof client.on === 'function') {
         console.log("✅ Conectando interceptor a cliente MQTT");
-        client.on('message', interceptorEmergencia);
+        client.on('message', interceptorPrincipal);
         console.log("✅ Interceptor conectado");
         return true;
     }
     return false;
 }
 
-// Intentar conectar cada 500ms hasta 30 intentos
 let intentosInterceptor = 0;
 let intervaloInterceptor = setInterval(() => {
     intentosInterceptor++;
@@ -405,7 +417,6 @@ let intervaloInterceptor = setInterval(() => {
     }
 }, 500);
 
-// Función para probar emergencia manualmente desde consola
 window.probarEmergenciaManual = function() {
     console.log("🧪 Probando emergencia manual");
     const overlay = document.getElementById('emergenciaOverlay');
@@ -424,14 +435,12 @@ window.ocultarEmergenciaManual = function() {
 };
 
 // ============================================================
-// SCRIPT PRINCIPAL CORREGIDO - CON CONTROL DE PERMISO HASTA 20:00
+// SCRIPT PRINCIPAL - CONTROL DE PERMISO HASTA 20:00
 // ============================================================
 
-// --- Variables para control de permiso local ---
 let permisoActivoLocal = false;
 let temporizadorPermiso = null;
 
-// --- Verificar horario de seguridad (20:00) ---
 function verificarHorarioSeguridad() {
     const ahora = new Date();
     const hora = ahora.getHours();
@@ -459,7 +468,6 @@ function verificarHorarioSeguridad() {
     }
 }
 
-// --- Desactivar permiso localmente ---
 function desactivarPermisoLocal() {
     if (temporizadorPermiso) {
         clearTimeout(temporizadorPermiso);
@@ -484,7 +492,6 @@ function desactivarPermisoLocal() {
     }
 }
 
-// --- Iniciar countdown de permiso local ---
 function iniciarCountdownSeguridad(minutos) {
     if (temporizadorPermiso) clearTimeout(temporizadorPermiso);
     
@@ -518,7 +525,6 @@ function iniciarCountdownSeguridad(minutos) {
     }, 1000);
 }
 
-// --- Función principal para activar permiso (con control de horario) ---
 function activarPermisoConTiempo() {
     if (!verificarHorarioSeguridad()) {
         if (typeof mostrarMensaje === 'function') {
@@ -544,12 +550,10 @@ function activarPermisoConTiempo() {
     }
 }
 
-// --- Verificar horario de seguridad cada minuto ---
 setInterval(() => {
     verificarHorarioSeguridad();
 }, 60000);
 
-// Función para actualizar sensores adicionales
 function actualizarSensoresDesdeEstado(data) {
     const campos = {
         estadoFoto:  data.fotoHabilitado ? '✅ Habilitado' : '❌ Deshabilitado',
@@ -564,12 +568,10 @@ function actualizarSensoresDesdeEstado(data) {
     });
 }
 
-// Guardar referencia original de updateConfiguracion
 if (typeof window.originalUpdateConfiguracion === 'undefined') {
     window.originalUpdateConfiguracion = window.updateConfiguracion;
 }
 
-// Sobrescribir updateConfiguracion de forma segura (sin recursión)
 window.updateConfiguracion = function(data) {
     if (window.originalUpdateConfiguracion) {
         window.originalUpdateConfiguracion(data);
@@ -577,7 +579,6 @@ window.updateConfiguracion = function(data) {
     actualizarSensoresDesdeEstado(data);
 };
 
-// Función para ir a página secundaria
 window.irASecundaria = function() {
     window.location.href = 'https://itibbinformaticaindustrial-wq.github.io/porton-monitor-secondary/';
 };
@@ -612,7 +613,6 @@ function actualizarConf() {
     if (h) h.textContent = (typeof verificarAccesoActivo === 'function' && verificarAccesoActivo()) ? '✅ En horario activo' : '⏰ Fuera de horario';
 }
 
-// Inicialización al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
     verificarHorarioSeguridad();
     if (typeof iniciarReloj === 'function') iniciarReloj();
