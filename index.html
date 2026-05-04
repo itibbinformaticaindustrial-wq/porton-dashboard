@@ -344,68 +344,47 @@ window.desactivarEmergenciaRemotaUI = desactivarEmergenciaRemotaUI;
 
 function interceptorEmergencia(topic, message) {
     console.log("📨 INTERCEPTOR - Topic:", topic);
+    console.log("📨 INTERCEPTOR - Tipo de message:", typeof message);
     
     if (topic === 'porton/estado') {
         try {
-            // Obtener el mensaje como string
             let mensajeStr;
             if (typeof message === 'string') {
                 mensajeStr = message;
-            } else if (message.toString) {
+            } else if (message && message.toString) {
                 mensajeStr = message.toString();
             } else {
                 mensajeStr = String(message);
             }
             
-            console.log("📨 INTERCEPTOR - Mensaje RAW:", mensajeStr);
+            console.log("📨 INTERCEPTOR - Mensaje RAW (primeros 100 chars):", mensajeStr.substring(0, 100));
             
-            // Parsear JSON
             const data = JSON.parse(mensajeStr);
-            console.log("📊 INTERCEPTOR - Datos parseados:", data);
-            console.log("📊 emergenciaActiva:", data.emergenciaActiva);
-            console.log("📊 emergenciaRemotaActiva:", data.emergenciaRemotaActiva);
+            console.log("📊 INTERCEPTOR - emergenciaActiva:", data.emergenciaActiva);
+            console.log("📊 INTERCEPTOR - emergenciaRemotaActiva:", data.emergenciaRemotaActiva);
             
             if (data.emergenciaActiva === true) {
                 console.log("🛑 ¡EMERGENCIA DETECTADA! Mostrando overlay...");
-                const overlay = document.getElementById('emergenciaOverlay');
-                const divClave = document.getElementById('emergenciaContrasena');
-                const btnRecargar = document.getElementById('btnRecargarEmergencia');
-                const infoTipo = document.getElementById('emergenciaTipo');
-                
-                if (overlay) {
-                    overlay.classList.add('visible');
-                    if (data.emergenciaRemotaActiva === true) {
-                        if (divClave) divClave.style.display = 'block';
-                        if (btnRecargar) btnRecargar.style.display = 'none';
-                        if (infoTipo) infoTipo.textContent = 'PARADA REMOTA ACTIVADA';
-                    } else {
-                        if (divClave) divClave.style.display = 'none';
-                        if (btnRecargar) btnRecargar.style.display = 'block';
-                        if (infoTipo) infoTipo.textContent = 'PARADA FÍSICA ACTIVADA';
-                    }
+                if (typeof window.mostrarOverlayEmergencia === 'function') {
+                    window.mostrarOverlayEmergencia(data.emergenciaRemotaActiva === true);
+                } else {
+                    console.error("❌ window.mostrarOverlayEmergencia NO está definida");
                 }
             } else if (data.emergenciaActiva === false) {
-                const overlay = document.getElementById('emergenciaOverlay');
-                if (overlay && overlay.classList.contains('visible')) {
-                    overlay.classList.remove('visible');
-                    console.log("✅ Emergencia desactivada por MQTT");
+                if (typeof window.ocultarOverlayEmergencia === 'function') {
+                    window.ocultarOverlayEmergencia();
                 }
             }
         } catch(e) {
             console.error("❌ Error parseando mensaje:", e);
-            console.log("📨 Mensaje original:", message);
         }
     }
 }
 
-// Conectar el interceptor al cliente MQTT
+// Esperar a que el cliente MQTT esté listo y conectarse
 function conectarInterceptor() {
     if (typeof client !== 'undefined' && client !== null && typeof client.on === 'function') {
         console.log("✅ Conectando interceptor a cliente MQTT");
-        // Guardar el manejador original si existe
-        if (client._originalMessageHandler) {
-            client.removeListener('message', client._originalMessageHandler);
-        }
         client.on('message', interceptorEmergencia);
         console.log("✅ Interceptor conectado");
         return true;
@@ -413,16 +392,16 @@ function conectarInterceptor() {
     return false;
 }
 
-// Intentar conectar cada 500ms
+// Intentar conectar cada 500ms hasta 30 intentos
 let intentosInterceptor = 0;
 let intervaloInterceptor = setInterval(() => {
     intentosInterceptor++;
     if (conectarInterceptor()) {
         clearInterval(intervaloInterceptor);
         console.log("✅ Interceptor activo después de", intentosInterceptor, "intentos");
-    } else if (intentosInterceptor > 20) {
+    } else if (intentosInterceptor > 30) {
         clearInterval(intervaloInterceptor);
-        console.error("❌ No se pudo conectar el interceptor");
+        console.error("❌ No se pudo conectar el interceptor MQTT");
     }
 }, 500);
 
@@ -456,9 +435,7 @@ let temporizadorPermiso = null;
 function verificarHorarioSeguridad() {
     const ahora = new Date();
     const hora = ahora.getHours();
-    const minutos = ahora.getMinutes();
     
-    // Si son las 20:00 o más
     if (hora >= 20) {
         if (permisoActivoLocal) {
             desactivarPermisoLocal();
