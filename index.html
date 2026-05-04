@@ -301,10 +301,44 @@
 <script src="emergencia.js"></script>
 <script src="ui.js"></script>
 <script src="mqtt-client.js"></script>
+
 <script>
-function irASecundaria() {
-    window.location.href = 'https://itibbinformaticaindustrial-wq.github.io/porton-monitor-secondary/';
+// ============================================================
+// SCRIPT PRINCIPAL CORREGIDO - SIN RECURSIÓN INFINITA
+// ============================================================
+
+// Función para actualizar sensores adicionales
+function actualizarSensoresDesdeEstado(data) {
+    const campos = {
+        estadoFoto:  data.fotoHabilitado ? '✅ Habilitado' : '❌ Deshabilitado',
+        estadoPIR:   data.pirHabilitado  ? '✅ Habilitado' : '❌ Deshabilitado',
+        estadoChapa: data.chapaActiva    ? '🔐 Activada'   : '⚪ Inactiva',
+        estadoMotor: data.motorActivo    ? '⚡ Activo'     : '⚫ Inactivo',
+        estadoGeneralSensores: data.estado || '—'
+    };
+    Object.entries(campos).forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    });
 }
+
+// Guardar referencia original de updateConfiguracion
+if (typeof window.originalUpdateConfiguracion === 'undefined') {
+    window.originalUpdateConfiguracion = window.updateConfiguracion;
+}
+
+// Sobrescribir updateConfiguracion de forma segura (sin recursión)
+window.updateConfiguracion = function(data) {
+    if (window.originalUpdateConfiguracion) {
+        window.originalUpdateConfiguracion(data);
+    }
+    actualizarSensoresDesdeEstado(data);
+};
+
+// Función para ir a página secundaria
+window.irASecundaria = function() {
+    window.location.href = 'https://itibbinformaticaindustrial-wq.github.io/porton-monitor-secondary/';
+};
 
 function mostrarVista(nombre, navEl) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -312,8 +346,8 @@ function mostrarVista(nombre, navEl) {
     const vista = document.getElementById('view-' + nombre);
     if (vista) vista.classList.add('active');
     if (navEl) navEl.classList.add('active');
-    if (nombre === 'historial') actualizarTablaHistorial();
-    if (nombre === 'configuracion') actualizarConf();
+    if (nombre === 'historial') if (typeof actualizarTablaHistorial === 'function') actualizarTablaHistorial();
+    if (nombre === 'configuracion') if (typeof actualizarConf === 'function') actualizarConf();
     cerrarSidebar();
 }
 
@@ -321,12 +355,13 @@ function abrirSidebar() {
     document.getElementById('sidebar').classList.add('open');
     document.getElementById('sidebarOverlay').classList.add('active');
 }
+
 function cerrarSidebar() {
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('sidebarOverlay').classList.remove('active');
 }
 
-// Contador regresivo de permiso especial
+// Contador regresivo
 let permisoFinTimestamp = 0;
 let countdownInterval = null;
 
@@ -338,88 +373,64 @@ function iniciarCountdown(minutos) {
     if (countdownInterval) clearInterval(countdownInterval);
     countdownInterval = setInterval(() => {
         const restante = Math.max(0, permisoFinTimestamp - Date.now());
-        const min = Math.floor(restante / 60000).toString().padStart(2,'0');
-        const seg = Math.floor((restante % 60000) / 1000).toString().padStart(2,'0');
+        const min = Math.floor(restante / 60000).toString().padStart(2, '0');
+        const seg = Math.floor((restante % 60000) / 1000).toString().padStart(2, '0');
         if (txt) txt.textContent = min + ':' + seg;
         if (restante <= 0) {
             clearInterval(countdownInterval);
             const cd2 = document.getElementById('permisoCountdown');
             if (cd2) cd2.style.display = 'none';
-            if (!verificarAccesoActivo()) {
+            if (typeof verificarAccesoActivo === 'function' && !verificarAccesoActivo()) {
                 const btnA = document.getElementById('btnAbrir');
                 const btnC = document.getElementById('btnCerrar');
                 if (btnA) { btnA.disabled = true; btnA.classList.add('btn-bloqueado'); }
                 if (btnC) { btnC.disabled = true; btnC.classList.add('btn-bloqueado'); }
-                mostrarMensaje('⏰ Permiso expirado — acceso bloqueado', 5000);
+                if (typeof mostrarMensaje === 'function') mostrarMensaje('⏰ Permiso expirado — acceso bloqueado', 5000);
             }
         }
     }, 1000);
 }
 
-// Sobrescribir activarPermisoConTiempo para iniciar countdown
 function activarPermisoConTiempo() {
     const input = document.getElementById('permisoMinutos');
     let minutos = parseInt(input ? input.value : 60);
     if (isNaN(minutos) || minutos < 5) minutos = 5;
     if (minutos > 120) minutos = 120;
     if (input) input.value = minutos;
-    enviarComando('ACTIVAR_PERMISO:' + minutos);
-    mostrarMensaje('🔑 Permiso especial activado por ' + minutos + ' min');
+    if (typeof enviarComando === 'function') enviarComando('ACTIVAR_PERMISO:' + minutos);
+    if (typeof mostrarMensaje === 'function') mostrarMensaje('🔑 Permiso especial activado por ' + minutos + ' min');
     iniciarCountdown(minutos);
-}
-
-function updateSensores(data) {
-    const sets = [
-        ['sensorAbiertoBox','sensorAbiertoVal','sensorAbiertoBox2','sensorAbiertoVal2', data.abierto],
-        ['sensorCerradoBox','sensorCerradoVal','sensorCerradoBox2','sensorCerradoVal2', data.cerrado]
-    ];
-    sets.forEach(([id1,v1,id2,v2,activo]) => {
-        const txt = activo ? '🟢 Activo' : '⚪ Inactivo';
-        [id1,id2].forEach(id => { const c=document.getElementById(id); if(c) c.classList.toggle('activo',!!activo); });
-        [v1,v2].forEach(id => { const e=document.getElementById(id); if(e) e.textContent=txt; });
-    });
-}
-
-function updateSensoresDesdeEstado(data) {
-    const campos = {
-        estadoFoto:  data.fotoHabilitado ? '✅ Habilitado':'❌ Deshabilitado',
-        estadoPIR:   data.pirHabilitado  ? '✅ Habilitado':'❌ Deshabilitado',
-        estadoChapa: data.chapaActiva    ? '🔐 Activada' :'⚪ Inactiva',
-        estadoMotor: data.motorActivo    ? '⚡ Activo'   :'⚫ Inactivo',
-        estadoGeneralSensores: data.estado || '—'
-    };
-    Object.entries(campos).forEach(([id,val]) => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = val;
-    });
-}
-
-// Envolver updateConfiguracion para incluir vista sensores
-const _updateConfOrig = updateConfiguracion;
-function updateConfiguracion(data) {
-    _updateConfOrig(data);
-    updateSensoresDesdeEstado(data);
 }
 
 function actualizarConf() {
     const m = document.getElementById('mqttEstadoConf');
     const e = document.getElementById('esp32EstadoConf');
     const h = document.getElementById('horarioEstadoConf');
-    if (m) m.textContent = mqttConectado ? '✅ Conectado' : '❌ Desconectado';
-    if (e) e.textContent = (ultimoHeartbeat && Date.now()-ultimoHeartbeat<35000) ? '✅ Online':'⚠️ Sin respuesta';
-    if (h) h.textContent = verificarAccesoActivo() ? '✅ En horario activo':'⏰ Fuera de horario';
+    if (m) m.textContent = (typeof mqttConectado !== 'undefined' && mqttConectado) ? '✅ Conectado' : '❌ Desconectado';
+    if (e) e.textContent = (typeof ultimoHeartbeat !== 'undefined' && ultimoHeartbeat && Date.now() - ultimoHeartbeat < 35000) ? '✅ Online' : '⚠️ Sin respuesta';
+    if (h) h.textContent = (typeof verificarAccesoActivo === 'function' && verificarAccesoActivo()) ? '✅ En horario activo' : '⏰ Fuera de horario';
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-    iniciarReloj();
-    configurarBotones();
-    iniciarHeartbeatCheck();
-    conectarMQTT();
-    actualizarEstadoHorario();
-    setInterval(actualizarEstadoHorario, 60000);
-    document.getElementById('esp32Btn').onclick = () => mostrarMensaje(
-        (ultimoHeartbeat && Date.now()-ultimoHeartbeat<35000) ? '📡 ESP32 online':'⚠️ ESP32 sin respuesta'
-    );
+// Inicialización al cargar la página
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof iniciarReloj === 'function') iniciarReloj();
+    if (typeof configurarBotones === 'function') configurarBotones();
+    if (typeof iniciarHeartbeatCheck === 'function') iniciarHeartbeatCheck();
+    if (typeof conectarMQTT === 'function') conectarMQTT();
+    if (typeof actualizarEstadoHorario === 'function') actualizarEstadoHorario();
+    setInterval(() => {
+        if (typeof actualizarEstadoHorario === 'function') actualizarEstadoHorario();
+    }, 60000);
+    
+    const esp32Btn = document.getElementById('esp32Btn');
+    if (esp32Btn) {
+        esp32Btn.onclick = () => {
+            const msg = (typeof ultimoHeartbeat !== 'undefined' && ultimoHeartbeat && Date.now() - ultimoHeartbeat < 35000) 
+                ? '📡 ESP32 online' 
+                : '⚠️ ESP32 sin respuesta';
+            if (typeof mostrarMensaje === 'function') mostrarMensaje(msg);
+        };
+    }
 });
 </script>
 </body>
